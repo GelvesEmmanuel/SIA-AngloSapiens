@@ -16,18 +16,19 @@ export const registrarDocente = async (data: InsertDocente) => {
     return nuevoDocente;
 }
 
-export const obtenerDocentePorId = async (id:number): Promise<Docente | null> => {
+/* export const obtenerDocentePorId = async (id:number): Promise<Docente | null> => {
     const[docente] = await db.select().from(docentes).where(eq(docentes.id, id));
 
-    return docente || null;
-}
+   return docente || null;
+} */
 
 
 
-
+/*
 export const actualizarDocente = async (id: number, data: Partial<InsertDocente>): Promise<Docente | null> => {
 
 const [docenteActualizado] = await db.update(docentes).set(data).where(eq(docentes.id, id)).returning();
 
 return docenteActualizado || null;
 }
+*/

@@ -3,43 +3,53 @@ import { Request, Response } from "express";
 import {
   registrarDocente,
   obtnerDocentes,
-  obtenerDocentePorId,
-  actualizarDocente
+  //obtenerDocentePorId,
+  //actualizarDocente
 } from "../services/docente.service.js";
 import type { InsertDocente } from "../types/docentes.types.js";
 
-
-export const obtenerDocentesController = async (req: Request, res: Response,) => {
+export const obtenerDocentesController = async (
+  req: Request,
+  res: Response,
+) => {
   try {
     const listaDocentes = await obtnerDocentes();
-    console.log(listaDocentes)
-    return res
-      .status(200)
-      .json({
-        succes: true,
-        message: "Docentes obtenidos con exito",
-        data: listaDocentes// aqui va el arreglo que devolvio drizzle de la base de datos
-      });
+    console.log(listaDocentes);
+    return res.status(200).json({
+      succes: true,
+      message: "Docentes obtenidos con exito",
+      data: listaDocentes, // aqui va el arreglo que devolvio drizzle de la base de datos
+    });
   } catch (error: any) {
     return res.status(500).json({
-        succes:false,
-        message: error.message
+      succes: false,
+      message: error.message,
     });
   }
 };
 
-
-export const registrarDocenteController = async (req: Request, res: Response,) => {
+export const registrarDocenteController = async (
+  req: Request,
+  res: Response,
+) => {
   try {
     // Agrupamos limpiamente los campos en el objeto data
     const data: InsertDocente = {
+      codigo: req.body.codigo,
+      usuarioId: req.body.usuarioId ?? null,
+
+      tipoDocumento: req.body.tipoDocumento,
+      numeroDocumento: req.body.numeroDocumento,
+
       nombre: req.body.nombre,
-      apellido: req.body.apellido,
-      correo: req.body.correo,
-      telefono: req.body.telefono,
+      apellidos: req.body.apellidos,
+      fechaNacimiento: req.body.fechaNacimiento,
+
+      telefono: req.body.telefono ?? null,
+      formacionAcademica: req.body.formacionAcademica ?? null,
+
+      reportaDiscapacidad: req.body.reportaDiscapacidad ?? false,
     };
-    
-    
 
     console.log(data);
     // Pasamos el objeto completo al servicio
@@ -55,7 +65,7 @@ export const registrarDocenteController = async (req: Request, res: Response,) =
   }
 };
 
-
+/*
 export const obtenerDocentePorIdController = async (req: Request, res: Response) => {
     try{
         const id = Number(req.params.id);
@@ -115,3 +125,4 @@ try{
 
 }
 
+*/
