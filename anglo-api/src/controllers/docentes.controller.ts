@@ -6,7 +6,10 @@ import {
   //obtenerDocentePorId,
   //actualizarDocente
 } from "../services/docente.service.js";
+import {subirArchivo, obtenerUrlFirmada} from "../services/storage.service.js";
+import {guardarArchivosEnBD} from "../services/archivos.service.js";
 import type { InsertDocente } from "../types/docentes.types.js";
+import fs from "fs/promises";
 
 export const obtenerDocentesController = async (
   req: Request,
@@ -32,11 +35,15 @@ export const registrarDocenteController = async (
   req: Request,
   res: Response,
 ) => {
+  const uploadFilesPaths: string[] = []; // Para limpieza si ocurre un error global
   try {
+
+    const rawUsuarioId = req.body.usuarioId;
+    const usuarioIdLimpio = (!rawUsuarioId || rawUsuarioId === 'null' || rawUsuarioId === '') ? undefined : rawUsuarioId;
     // Agrupamos limpiamente los campos en el objeto data
     const data: InsertDocente = {
       codigo: req.body.codigo,
-      usuarioId: req.body.usuarioId ?? null,
+      usuarioId: usuarioIdLimpio,
 
       tipoDocumento: req.body.tipoDocumento,
       numeroDocumento: req.body.numeroDocumento,
@@ -50,20 +57,78 @@ export const registrarDocenteController = async (
 
       reportaDiscapacidad: req.body.reportaDiscapacidad ?? false,
     };
+    
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+    const documentPaths: Record<string, string> = {};
 
-    console.log(data);
+    //1.procesar y subir los archivos a storage supabase si existen
+    if(files){
+
+      for(const [fieldname, fileArray] of Object.entries(files)){
+
+        if(fileArray && fileArray.length > 0){
+
+          const file = fileArray[0];
+          uploadFilesPaths.push(file.path); // Guardamos la ruta local para limpieza
+          //definir carpeta sehun el campo del formulario
+          let carpetaSupabase = 'Otros';
+          if(fieldname === 'profilePicture') carpetaSupabase = 'FotosPerfil';
+          if(fieldname === 'identityDocument') carpetaSupabase = 'DocumentosIdentidad';
+          if(fieldname === 'disabilityCertificate') carpetaSupabase = 'CertificadosDiscapacidad';
+          if(fieldname === 'cv') carpetaSupabase = 'HojasDeVida';// para el estudiante esto se remueve
+
+          const storagePath = await subirArchivo(
+            file.path,
+            carpetaSupabase,
+            file.mimetype
+          );
+
+          // guardamso al ruta que ira en la base de datos 
+          documentPaths[fieldname] = storagePath;
+        }
+      }
+    }
+
+    console.log(data+"datos del docente a registrar","archivos subidos: ", uploadFilesPaths);
+
     // Pasamos el objeto completo al servicio
     const nuevoDocente = await registrarDocente(data);
+
+    if (Object.keys(documentPaths).length > 0) {
+      await guardarArchivosEnBD(
+        nuevoDocente.id, 
+        "DOCENTE", 
+        documentPaths
+      );
+    }
 
     return res.status(201).json({
       success: true,
       message: "Docente registrado con éxito",
-      data: nuevoDocente,
+      data: nuevoDocente, documentPaths: documentPaths // Retornamos las rutas de los documentos subidos,
     });
-  } catch (error) {
-    return res.status(500).json("Docente no pudo er registrado");
-  }
+  } catch (error: any) {
+    for (const filePath of uploadFilesPaths) {
+        await fs.unlink(filePath).catch(() => {});
+      }
+      if (error.code === '23505') {
+  return res.status(400).json({
+    success: false,
+    error: 'Ya existe un docente registrado con este número de documento o código.'
+  });
+}
+      console.error('Error al registrar estudiante:', error);
+      return res.status(500).json({
+        ok: false,
+        error: error.message || 'Error interno al registrar el docente'
+      });
+  
 };
+}
+
+
+
+
 
 /*
 export const obtenerDocentePorIdController = async (req: Request, res: Response) => {
