@@ -8,6 +8,8 @@ import {
   //actualizarDocenteController,
 } from "../controllers/docentes.controller.js";
 import { upload } from "../libs/multer.libs.js";
+import { validarSchema } from "../middlewares/validarDocente.middlewar.js";
+import { crearDocenteSchema } from "../validators/docente.validator.js";
 const router = Router();
 
 router.get("/docentes", obtenerDocentesController);
@@ -24,7 +26,7 @@ const uploadTeacherFields = upload.fields([
 ]);
 
 
-router.post("/docentes", uploadTeacherFields, registrarDocenteController);
+router.post("/docentes", uploadTeacherFields,validarSchema(crearDocenteSchema), registrarDocenteController);
 //router.put("/docentes/:id", actualizarDocenteController);
 
 export default router;

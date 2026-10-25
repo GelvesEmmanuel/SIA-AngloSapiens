@@ -1,7 +1,7 @@
 import {db} from "../config/db/conexion.js";
 import {archivos} from "../config/db/schema.js";
 
-
+// este servicio guarda la url obetnida de storage y la guarda en la tabla archivos 
 // Mapeo de las llaves del formulario/Multer a los enums de la base de datos
 const categoriaMap: Record<string, "FOTO"|"CEDULA"|"DISCAPACIDAD"|"CV"> = {
 

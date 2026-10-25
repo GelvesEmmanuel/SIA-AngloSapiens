@@ -3,6 +3,7 @@ import { Request, Response } from "express";
 import {
   registrarDocente,
   obtnerDocentes,
+  generarCodigoDOcente,
   //obtenerDocentePorId,
   //actualizarDocente
 } from "../services/docente.service.js";
@@ -40,9 +41,11 @@ export const registrarDocenteController = async (
 
     const rawUsuarioId = req.body.usuarioId;
     const usuarioIdLimpio = (!rawUsuarioId || rawUsuarioId === 'null' || rawUsuarioId === '') ? undefined : rawUsuarioId;
+    const codigogenerado =  await generarCodigoDOcente();
+
     // Agrupamos limpiamente los campos en el objeto data
     const data: InsertDocente = {
-      codigo: req.body.codigo,
+      codigo: codigogenerado,
       usuarioId: usuarioIdLimpio,
 
       tipoDocumento: req.body.tipoDocumento,
@@ -123,7 +126,11 @@ export const registrarDocenteController = async (
         error: error.message || 'Error interno al registrar el docente'
       });
   
-};
+}finally{
+  for (const filePath of uploadFilesPaths) {
+      await fs.unlink(filePath).catch(() => {});
+    }
+}
 }
 
 
