@@ -5,6 +5,7 @@ import morgan from 'morgan';
 import docentesRoutes from './routes/docentes.routes.js'; // Asegúrate de importar tus rutas correctamente
 import uploadRoutes from './routes/upload.routes.js'; // Asegúrate de importar tus rutas correctamente
 import archivoRoutes from './routes/archivo.routes.js'; // Asegúrate de importar tus rutas correctamente
+import authRoutes from './routes/auth.routes.js'
 const app = express();
 app.use(morgan('dev'));
 app.use(cors());
@@ -17,4 +18,5 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api', docentesRoutes); // Asegúrate de importar docentesRoutes desde el archivo correspondiente
 app.use('/api', uploadRoutes); // Asegúrate de importar uploadRoutes desde el archivo correspondiente
 app.use('/api', archivoRoutes); // Asegúrate de importar archivoRoutes desde el archivo correspondiente
+app.use('/api', authRoutes);
 export default app; // Exportas la instancia de express
