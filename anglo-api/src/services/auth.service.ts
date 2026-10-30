@@ -134,4 +134,27 @@ export const AuthService = {
       mensaje: 'Contraseña actualizada exitosamente. Por favor inicie sesión nuevamente.',
     };
   },
+
+  cerrarSesion: async(usuarioId: string) =>{
+    //verificamos que exista el usuario
+    const[usuario] = await db.select().from(usuarios).where(eq(usuarios.usuarioId, usuarioId));
+     if (!usuario){
+      throw new Error ('Usuario no encontrado')
+     }
+
+     // incrementamos el version token
+     await db.update(usuarios).set({versionToken: usuario.versionToken +1,
+      updatedAt: new Date(),
+     }). where(eq(usuarios.usuarioId, usuarioId));
+     return {
+      succes: true,
+      mensaje: 'Sesión cerrada exitosamente'
+     }
+
+
+  }
+
+
+
+
 };

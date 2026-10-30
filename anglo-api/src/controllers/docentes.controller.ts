@@ -38,6 +38,9 @@ export const registrarDocenteController = async (
 ) => {
   const uploadFilesPaths: string[] = []; // Para limpieza si ocurre un error global
   try {
+    //1. obtner el ID del ADmin logueado desde el token midleware
+ const usuarioAdminId = (req as any).user?.usuarioId;
+ 
 
     const rawUsuarioId = req.body.usuarioId;
     const usuarioIdLimpio = (!rawUsuarioId || rawUsuarioId === 'null' || rawUsuarioId === '') ? undefined : rawUsuarioId;
@@ -93,9 +96,12 @@ export const registrarDocenteController = async (
     }
 
     console.log(data+"datos del docente a registrar","archivos subidos: ", uploadFilesPaths);
-
+    // (Opcional por seguridad) Validar que exista
+    if (!usuarioAdminId) {
+      return res.status(401).json({ success: false, error: 'No autorizado: Falta información del usuario en el token' });
+    }
     // Pasamos el objeto completo al servicio
-    const nuevoDocente = await registrarDocente(data);
+    const nuevoDocente = await registrarDocente(data, usuarioAdminId);
 
     if (Object.keys(documentPaths).length > 0) {
       await guardarArchivosEnBD(

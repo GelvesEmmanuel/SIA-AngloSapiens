@@ -3,6 +3,7 @@ import { AuthRequest } from '../middlewares/auth.midleware.js';
 import { AuthService } from '../services/auth.service.js';
 import { loginSchema, cambiarContrasenaSchema, crearUsuarioAdminSchema } from '../validators/auth.validator.js';
 import { error } from 'console';
+import { ca } from 'zod/locales';
 
 export const loginController = async (req: AuthRequest, res: Response) => {
   try {
@@ -81,3 +82,32 @@ export const crearUSuarioAdminController = async (req: AuthRequest, res: Respons
         });
     };
 }
+
+export const cerrarSesionUsuarioController = async (req: AuthRequest, res: Response) =>{
+
+
+  try{
+    //1 extrare iddel usuario autenticado de forma segura desde el token(midleare verificar token)
+    const usuarioId =(req as any).user?.usuarioId;
+    if (!usuarioId){
+      return res.status(401).json({
+        succes: false,
+        error: 'No autorizado: No se encontro la sesion activa en la peticion'
+      })
+    }
+    // 2. ejecutar logica del servicio para invalidar el token
+      const resultado = await AuthService.cerrarSesion(usuarioId);
+
+      return res.status(200).json({
+        succes:true,
+        error: resultado.mensaje,
+      })
+  }catch(error: any){
+    console.error('Error al cerrar sesión:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Error interno al cerrar sesión',
+    });
+
+  };
+};

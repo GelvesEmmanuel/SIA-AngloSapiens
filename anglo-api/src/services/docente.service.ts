@@ -11,7 +11,7 @@ export const obtnerDocentes = async (): Promise<Docente[]> => {
   const docentesResultado = await db.select().from(docentes);
   return docentesResultado;
 };
-export const registrarDocente = async (data: InsertDocente) => {
+export const registrarDocente = async (data: InsertDocente, usuarioAdminId: string) => {
   console.log("entrando servicio - iniciando transacción atómica de docente y usuario");
 
   // Usamos una transacción para que si algo falla, no quede huérfano ni el usuario ni el docente
@@ -40,7 +40,7 @@ export const registrarDocente = async (data: InsertDocente) => {
       .returning();
       // registrar auditoria del sistea de forma atomica
       await registrarAuditoria({
-      usuarioId: nuevoUsuario.usuarioId, // O el ID del admin que está realizando la acción si lo tienes disponible en el req
+      usuarioId: usuarioAdminId, // O el ID del admin que está realizando la acción si lo tienes disponible en el req
       tablaAfectada: 'docentes',
       registroId: nuevoDocente.id, // Asegúrate de que sea el ID de la tabla docentes
       accion: 'CREATE',

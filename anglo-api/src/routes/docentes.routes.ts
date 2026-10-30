@@ -10,12 +10,12 @@ import {
 import { upload } from "../libs/multer.libs.js";
 import { validarSchema } from "../middlewares/validarDocente.middlewar.js";
 import { crearDocenteSchema } from "../validators/docente.validator.js";
-const router = Router();
+import { autorizarRoles, verificarToken  } from "../middlewares/auth.midleware.js";
 
+const router = Router();
+const autorizado = autorizarRoles('SUPER_ADMIN', 'COORD_ADMINISTRATIVO', 'COORD_ACADEMICO'); // los roles que tiene permiso ala ruta
 router.get("/docentes", obtenerDocentesController);
 //router.get("/docentes/:id", obtenerDocentePorIdController);
-
-
 
 // Multer para Docente (Sí exige CV)
 const uploadTeacherFields = upload.fields([
@@ -26,7 +26,7 @@ const uploadTeacherFields = upload.fields([
 ]);
 
 
-router.post("/docentes", uploadTeacherFields,validarSchema(crearDocenteSchema), registrarDocenteController);
+router.post("/docentes", verificarToken, autorizado, uploadTeacherFields,validarSchema(crearDocenteSchema), registrarDocenteController);
 //router.put("/docentes/:id", actualizarDocenteController);
 
 export default router;
