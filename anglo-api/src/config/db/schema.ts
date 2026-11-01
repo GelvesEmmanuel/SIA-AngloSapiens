@@ -184,6 +184,31 @@ export const auditoriaSistema = pgTable(
   (table) => [index("idx_auditoria_tabla").on(table.tablaAfectada, table.registroId)],
 );
 
+
+// --------------------------------------------------------------------------
+//1.2 coordinadores esta creada para poder guardar los datos basicos del cordinador
+// --------------------------------------------------------------------------
+export const coordinadores = pgTable(
+  "coordinadores",
+  {
+    id: uuid("id").primaryKey().default(sql`uuid_generate_v4()`),
+    usuarioId: uuid("usuario_id").unique().references(() => usuarios.usuarioId, {
+      onDelete: "set null",
+    }),
+    primerNombre: varchar("primer_nombre", { length: 50 }).notNull(),
+    segundoNombre: varchar("segundo_nombre", { length: 50 }),
+    primerApellido: varchar("primer_apellido", { length: 50 }).notNull(),
+    segundoApellido: varchar("segundo_apellido", { length: 50 }),
+    documentoIdentidad: varchar("documento_identidad", { length: 20 }).notNull().unique(),
+    diaCumpleanos: integer("dia_cumpleanos").notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("idx_coordinadores_documento").on(table.documentoIdentidad),
+  ]
+);
+
 // -----------------------------------------------------------------------------
 // 2. ESTUDIANTES
 // -----------------------------------------------------------------------------

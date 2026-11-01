@@ -1,7 +1,7 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middlewares/auth.midleware.js';
 import { AuthService } from '../services/auth.service.js';
-import { loginSchema, cambiarContrasenaSchema, crearUsuarioAdminSchema } from '../validators/auth.validator.js';
+import { loginSchema, cambiarContrasenaSchema } from '../validators/auth.validator.js';
 import { error } from 'console';
 import { ca } from 'zod/locales';
 
@@ -57,31 +57,7 @@ export const cambiarContrasenaController = async (req: AuthRequest, res: Respons
   }
 };
 
-export const crearUSuarioAdminController = async (req: AuthRequest, res: Response)=>{
 
-    try{
-        const datosValidados = crearUsuarioAdminSchema.parse(req.body);
-        const resultado = await AuthService.crearUsuarioPorAdmin({
-      primerNombre: datosValidados.primerNombre,
-      segundoNombre: datosValidados.segundoNombre,
-      primerApellido: datosValidados.primerApellido,
-      segundoApellido: datosValidados.segundoApellido,
-      documentoIdentidad: datosValidados.documentoIdentidad,
-      diaCumpleanos: datosValidados.diaCumpleanos,
-      rol: datosValidados.rol as  'COORD_ACADEMICO' | 'COORD_ADMINISTRATIVO',
-    });
-        return res.status(201).json({
-            exito:true,
-            mensaje:resultado,
-        });
-    }catch(error: any){
-
-        return res.status(400).json({
-            exito: false,
-            error: error.message || 'Error al cambiar la contraseña',
-        });
-    };
-}
 
 export const cerrarSesionUsuarioController = async (req: AuthRequest, res: Response) =>{
 

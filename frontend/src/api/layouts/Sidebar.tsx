@@ -18,7 +18,7 @@ import {
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../../features/auth/useAuth";
 import { navigationConfig } from "../layouts/navigation.config";
-
+import logoAnglosapiens from '../../assets/anglologo.png';
 interface SidebarProps {
   open: boolean;
   onClose: () => void;
@@ -88,20 +88,15 @@ export function Sidebar({ open, onClose }: SidebarProps) {
       >
         {/* Logo */}
         <div className="flex h-[60px] shrink-0 items-center justify-between border-b border-border px-5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-md bg-red text-lg font-extrabold text-white">
-              A
-            </div>
-
-            <div>
-              <p className="text-sm font-extrabold text-navy">
-                Anglosapiens
-              </p>
-              <p className="text-[9px] font-bold tracking-[0.2em] text-muted">
-                ENGLISH ACADEMY
-              </p>
-            </div>
-          </div>
+        <div className="flex w-full items-center justify-center gap-3">
+  <div className="flex items-center justify-center">
+    <img 
+      src={logoAnglosapiens} 
+      alt="miau" 
+      className="h-15 w-auto object-contain" 
+    />
+  </div>
+</div>
 
           <button
             type="button"

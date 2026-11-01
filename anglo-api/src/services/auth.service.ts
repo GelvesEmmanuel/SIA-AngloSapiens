@@ -8,47 +8,6 @@ const JWT_SECRET = process.env.JWT_SECRET;
 
 export const AuthService = {
 
-
-  // creacion del usuario por parte del superAdmin en este caso 'COORD_ACADEMICO', 'COORD_ADMINISTRATIVO'
-
-  crearUsuarioPorAdmin: async(datos:{
-    primerNombre: string;
-    segundoNombre?: string;
-    primerApellido: string;
-    segundoApellido?: string;
-    documentoIdentidad: string;
-    diaCumpleanos: number;
-    rol: 'COORD_ACADEMICO' | 'COORD_ADMINISTRATIVO';
-  })=>{
-
-    //1 generar username algoritmicamente
-
-    const username = generarUsername(
-
-      datos.primerNombre,
-      datos.primerApellido,
-      datos.diaCumpleanos,
-      datos.segundoNombre,
-      datos.segundoApellido,
-    );
-    //2 . la contraseña temporal por defecto documentoIdentidad
-    const contrasenaHash = await encriptarPassword(datos.documentoIdentidad);
-
-  // 3. instertar el nuevo usuario administrativo a la base de datos 
-  const[nuevoUsuario]= await db.insert(usuarios).values({username,contrasenaHash, rol:datos.rol, estado: 'ACTIVO', requiereCambioContrasena: true, versionToken: 1})
-  .returning();
-  return{
-
-    usuarioId: nuevoUsuario.usuarioId,
-    username: nuevoUsuario.username,
-    rol: nuevoUsuario.rol,
-    estado: nuevoUsuario.estado,
-    mensaje: `Usuario ${nuevoUsuario.username} creado exitosamente. La contraseña temporal es su número de documento.`,
-
-  }
-
-
-  },
   // RQF-SEG-01: Autenticación de Usuarios (Login)
   login: async (usernameInput: string, contrasenaPlain: string) => {
     // 1. Buscar el usuario por username

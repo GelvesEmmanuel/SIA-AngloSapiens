@@ -26,9 +26,7 @@ export function DashboardLayout() {
         />
 
         <main className="flex-1 p-4 sm:p-6">
-            <p className="bg-red p-4 text-white">
-  DASHBOARD LAYOUT FUNCIONANDO
-</p>
+            
           <Outlet />
         </main>
       </div>

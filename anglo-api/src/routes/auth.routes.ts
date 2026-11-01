@@ -1,5 +1,8 @@
+// Indica las diferentes rutas que pertenence al modulod e authenticacion y seguridad del aplicativo
+// login , logout, cambiar contraseña nueva 
+
 import {Router} from 'express'
-import { cambiarContrasenaController, cerrarSesionUsuarioController, crearUSuarioAdminController, loginController } from '../controllers/auth.controller.js'
+import { cambiarContrasenaController, cerrarSesionUsuarioController, loginController } from '../controllers/auth.controller.js'
 import { autorizarRoles, verificarToken } from '../middlewares/auth.midleware.js'
 
 const router = Router();
@@ -8,7 +11,6 @@ router.post('/login', loginController); // para inciiar sesion
 
 router.patch('/cambiar-contrasena', verificarToken, cambiarContrasenaController);
 // autorizarROles()protege quien es el que tiene acceso a este ruta
-router.post('/usuarios', verificarToken, autorizado, crearUSuarioAdminController)// para crear usuarios por el Super administrador 
 
 router.post('/logout', verificarToken,  cerrarSesionUsuarioController);
 export default router;
