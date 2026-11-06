@@ -7,7 +7,9 @@ import LoginPage from "../features/auth/pages/LoginPage";
 import ChangePasswordPage from "../features/auth/pages/CambiarContraseñapage";
 import HomePage from "../features/home/HomePage";
 import UsersPage from "../features/users/pages/UsersPage";
+import { GestionDocentePage } from "../features/GestionDocentes/pages/GestionDocentepage";
 import { DashboardLayout } from "./layouts/DashboardLayout";
+import DetalleDocentePage from "../features/GestionDocentes/pages/DetalleDocentePage";
 
 export function AppRouter() {
   return (
@@ -30,8 +32,36 @@ export function AppRouter() {
           </RequireAuth>
         }
       >
+        
         <Route index element={<UsersPage />} />
       </Route>
+
+      <Route
+        path="/docentes"
+        element={
+          <RequireAuth>
+            <DashboardLayout />
+          </RequireAuth>
+        }
+      >
+        
+        <Route index element={<GestionDocentePage />} />
+      </Route>
+      <Route
+  path="/docentes"
+  element={
+    <RequireAuth>
+      <DashboardLayout />
+    </RequireAuth>
+  }
+>
+  <Route index element={<GestionDocentePage />} />
+
+  <Route
+    path=":id"
+    element={<DetalleDocentePage />}
+  />
+</Route>
       <Route
         path="/cambiar-contrasena"
         element={

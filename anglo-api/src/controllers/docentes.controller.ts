@@ -158,9 +158,9 @@ export const listarDocentesController =  async (req: Request, res: Response) => 
     const busqueda = req.query.busqueda as string | undefined;
    const docentesListados = await obtenerDocentes({estado, busqueda});
     return res.status(200).json({
-      exito:true,
+      success:true,
       mensaje: 'Docentes listados exitosamente',
-      datos: docentesListados,
+      data: docentesListados,
     });
 
   }catch(error: any){
@@ -203,7 +203,8 @@ export const obtenerDocenteConArchivosPorIdController = async (req: Request, res
     }
         return res.status(200).json({
             success:true,
-            data:docenteConArchivos
+            message: "Dcoente encontrado exitosamente",
+            data: docenteConArchivos
         });
 
     }catch(error: any){
@@ -248,7 +249,7 @@ export const cambiarEstadoDocenteController = async (req: Request, res: Response
 
     return res.status(200).json({
       success: true,
-      mensaje: `El estado del docente ha sido cambiado a ${nuevoEstado} exitosamente.`,
+      message: `El estado del docente ha sido cambiado a ${nuevoEstado} exitosamente.`,
       data: docenteModificado
     });
 
@@ -389,7 +390,9 @@ export const actualizarDocumentosDocenteController = async (
     return res.status(200).json({
       success: true,
       message: "Documentos del docente actualizados con éxito (versiones anteriores archivadas como inactivas)",
-      documentPaths: documentPaths,
+      data:{
+        documentPaths
+      }
     });
 
   } catch (error: any) {
