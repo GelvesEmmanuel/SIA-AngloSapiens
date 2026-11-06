@@ -52,23 +52,19 @@ export async function obtenerUrlFirmada(
   storagePath: string, 
   segundos: number = 600
 ): Promise<string> {
-  try {
-    const { data, error } = await supabase.storage
-      .from(BUCKET)
-      .createSignedUrl(storagePath, segundos);
+  const { data, error } = await supabase.storage
+    .from(BUCKET)
+    .createSignedUrl(storagePath, segundos);
 
-    if (error) {
-      throw new Error(`Error al generar URL: ${error.message}`);
-    }
-
-    if (!data) {
-      throw new Error('No se recibió la URL firmada');
-    }
-
-    return data.signedUrl;
-  } catch (error: any) {
-    throw new Error(`Error al obtener URL firmada: ${error.message}`);
+  if (error) {
+    throw new Error(`Error al generar URL firmada: ${error.message}`);
   }
+
+  if (!data?.signedUrl) {
+    throw new Error('No se pudo generar la URL firmada para el archivo solicitado.');
+  }
+
+  return data.signedUrl;
 }
 
 /**

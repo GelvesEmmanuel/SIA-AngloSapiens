@@ -279,6 +279,7 @@ export const docentes = pgTable(
     fechaNacimiento: date("fecha_nacimiento", { mode: "string" }).notNull(),
     telefono: varchar("telefono", { length: 20 }),
     formacionAcademica: varchar("formacion_academica", { length: 200 }),
+    experienciaLaboral: varchar("experiencia_laboral", {length: 200}),
     reportaDiscapacidad: boolean("reporta_discapacidad").notNull().default(false),
     estado: estadoDocenteEnum("estado").notNull().default("REGISTRADO"),
     motivoInactivacion: text("motivo_inactivacion"),

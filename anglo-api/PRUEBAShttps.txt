@@ -15,3 +15,5 @@
 
 
 contraseñas (supabase:!EGT0419El@2026)(postma:¿EGT0419El@2004)
+
+aqui especifico cuales son las funcioens que puedo reutilizar en cada modulo

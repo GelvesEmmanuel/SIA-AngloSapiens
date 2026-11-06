@@ -16,7 +16,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.use('/api', docentesRoutes); // Asegúrate de importar docentesRoutes desde el archivo correspondiente
+app.use('/api/docentes', docentesRoutes); // Asegúrate de importar docentesRoutes desde el archivo correspondiente
 app.use('/api', uploadRoutes); // Asegúrate de importar uploadRoutes desde el archivo correspondiente
 app.use('/api', archivoRoutes); // Asegúrate de importar archivoRoutes desde el archivo correspondiente
 app.use('/api/auth', authRoutes);
