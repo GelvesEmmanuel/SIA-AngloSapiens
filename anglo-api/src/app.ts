@@ -7,6 +7,7 @@ import uploadRoutes from './routes/upload.routes.js'; // Asegúrate de importar 
 import archivoRoutes from './routes/archivo.routes.js'; // Asegúrate de importar tus rutas correctamente
 import authRoutes from './routes/auth.routes.js'
 import adminRoutes from './routes/admin.routes.js'
+import { errorHandler } from './middlewares/errorHandler.middleware.js';
 const app = express();
 app.use(morgan('dev'));
 app.use(cors());
@@ -21,4 +22,5 @@ app.use('/api', uploadRoutes); // Asegúrate de importar uploadRoutes desde el a
 app.use('/api', archivoRoutes); // Asegúrate de importar archivoRoutes desde el archivo correspondiente
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
+app.use(errorHandler);
 export default app; // Exportas la instancia de express

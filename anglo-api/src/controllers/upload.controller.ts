@@ -1,9 +1,13 @@
 // src/controllers/user.controller.ts (o en tu upload.controller.ts)
-import { Request, Response } from 'express';
-import fs from 'fs/promises';
+import { Request, Response, NextFunction } from 'express';
 import { subirArchivo, obtenerUrlFirmada } from '../services/storage.service.js';
+import { cleanupTemporaryFiles } from '../utils/uploadCleanup.utils.js';
 
-export const registrarUsuarioConArchivos = async (req: Request, res: Response): Promise<Response | void> => {
+export const registrarUsuarioConArchivos = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<Response | void> => {
   const uploadedFilesPaths: string[] = []; // Para limpieza si ocurre un error global
 
   try {
@@ -37,9 +41,6 @@ export const registrarUsuarioConArchivos = async (req: Request, res: Response): 
             file.mimetype
           );
 
-          // Limpiamos el archivo temporal local de inmediato
-          await fs.unlink(file.path).catch(() => {});
-
           // Opcional: Generar URL temporal de validación
           const urlTemporal = await obtenerUrlFirmada(storagePath, 600);
 
@@ -66,16 +67,9 @@ export const registrarUsuarioConArchivos = async (req: Request, res: Response): 
       }
     });
 
-  } catch (error: any) {
-    // Limpieza de emergencia de cualquier archivo local que haya quedado pendiente
-    for (const filePath of uploadedFilesPaths) {
-      await fs.unlink(filePath).catch(() => {});
-    }
-
-    console.error('Error en el registro unificado:', error);
-    return res.status(500).json({
-      ok: false,
-      error: error.message || 'Error interno al procesar el registro'
-    });
+  } catch (error: unknown) {
+    return next(error);
+  } finally {
+    await cleanupTemporaryFiles(uploadedFilesPaths);
   }
 };

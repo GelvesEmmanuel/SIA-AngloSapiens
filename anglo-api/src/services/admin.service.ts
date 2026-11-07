@@ -43,6 +43,16 @@ export const AdminService = {
     // 3. Usamos una transacción para asegurar que o se guardan ambos (usuario y coordinador) o ninguno
 
     const resultado = await db.transaction(async (tx) => {
+      const coordinadorExistente = await tx
+        .select({ usuarioId: coordinadores.usuarioId })
+        .from(coordinadores)
+        .where(eq(coordinadores.documentoIdentidad, datos.documentoIdentidad))
+        .limit(1);
+
+      if (coordinadorExistente.length > 0) {
+        throw new Error("DOCUMENTO_IDENTIDAD_DUPLICADO");
+      }
+
       // 3.1. instertar el nuevo usuario administrativo a la base de datos
       const [nuevoUsuario] = await tx
         .insert(usuarios)

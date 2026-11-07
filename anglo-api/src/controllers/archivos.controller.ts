@@ -1,23 +1,27 @@
-
-// controlador para las funciones de los archivos como poder verlos y actuaizarlos
-import { Request, Response } from "express";
+import type { NextFunction, Request, Response } from "express";
 import { obtenerUrlFirmada } from "../services/storage.service.js";
-import {archivos} from "../config/db/schema.js"
-import {db} from "../config/db.js"
-import {eq} from 'drizzle-orm'
-// funcion para obtener url firmada y poder renderizar el archivo en el frontend
-export const verArchivoController = async (req: Request, res: Response) => {
+import { archivos } from "../config/db/schema.js";
+import { db } from "../config/db.js";
+import { eq } from "drizzle-orm";
+import { AppError } from "../utils/appError.utils.js";
+
+export const verArchivoController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const { path } = req.query;
 
-    if (!path || typeof path !== 'string') {
-      return res.status(400).json({
-        success: false,
-        message: 'El parámetro "path" es requerido y debe ser una cadena de texto válida.'
-      });
+    if (!path || typeof path !== "string") {
+      throw new AppError(
+        'El parámetro "path" es requerido y debe ser una cadena de texto válida.',
+        400,
+        "PARAMETRO_INVALIDO",
+        [{ field: "path", message: "Ingrese una ruta de archivo válida." }]
+      );
     }
 
-    // 🛡️ MEJORA DE SEGURIDAD: Verificar en la BD si el archivo existe y está registrado
     const [archivoRegistrado] = await db
       .select()
       .from(archivos)
@@ -25,27 +29,22 @@ export const verArchivoController = async (req: Request, res: Response) => {
       .limit(1);
 
     if (!archivoRegistrado) {
-      return res.status(404).json({
-        success: false,
-        message: 'El archivo solicitado no se encuentra registrado en el sistema.'
-      });
+      throw new AppError(
+        "El archivo solicitado no se encuentra registrado en el sistema.",
+        404,
+        "ARCHIVO_NO_ENCONTRADO"
+      );
     }
 
-    // Si existe en BD, procedemos a generar la URL firmada temporal (ej. 1 hora = 3600s)
     const signedUrl = await obtenerUrlFirmada(path, 3600);
 
     return res.status(200).json({
       success: true,
       url: signedUrl,
       categoria: archivoRegistrado.categoria,
-      estado: archivoRegistrado.estado
+      estado: archivoRegistrado.estado,
     });
-
-  } catch (error: any) {
-    console.error('Error al procesar la visualización del archivo:', error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || 'Error interno al obtener la URL del archivo'
-    });
+  } catch (error: unknown) {
+    return next(error);
   }
 };

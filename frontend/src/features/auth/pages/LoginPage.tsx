@@ -1,8 +1,7 @@
 
 import { useState, type FormEvent } from "react";
-import { isAxiosError } from "axios";
 import { useAuth } from "../useAuth";
-import type { ApiErrorResponse } from "../auth.types";
+import { extraerMensajeError } from "../../../api/apiError";
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -23,23 +22,7 @@ export default function LoginPage() {
         contrasena,
       });
     } catch (error: unknown) {
-      if (isAxiosError<ApiErrorResponse>(error)) {
-        const data = error.response?.data;
-
-        if (data?.error || data?.mensaje) {
-          setErrorMessage(data.error ?? data.mensaje ?? "Error de autenticación.");
-        } else if (!error.response) {
-          setErrorMessage(
-            "No fue posible conectar con el servidor. Verifica que el backend esté activo."
-          );
-        } else {
-          setErrorMessage("No fue posible iniciar sesión. Verifica tus credenciales.");
-        }
-      } else if (error instanceof Error) {
-        setErrorMessage(error.message);
-      } else {
-        setErrorMessage("Ocurrió un error inesperado.");
-      }
+      setErrorMessage(extraerMensajeError(error));
     } finally {
       setIsSubmitting(false);
     }

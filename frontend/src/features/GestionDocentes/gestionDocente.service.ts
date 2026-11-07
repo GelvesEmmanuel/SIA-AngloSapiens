@@ -1,6 +1,5 @@
 import api from "../../api/axios";
 import type {Docente,CrearDocentePayload,CrearDocenteResponse,ListarDocentesParams, ApiResponse,CambiarEstadoDocentePayload } from "./docente.types"
-
 const BASE_URL = "/docentes";
 // 1. Listar docentes con filtros opcionales
 export const listarDocentes = async(
@@ -23,11 +22,11 @@ export const listarDocentes = async(
     return response.data;
     }
 // 3. Crear docente (Usando FormData para soportar la subida inicial de archivos y datos)
-    export const crearDocente = async (
-    payload: FormData
-    ): Promise<ApiResponse<CrearDocenteResponse>> => {
+  export const crearDocente = async (
+  payload: FormData
+): Promise<ApiResponse<CrearDocenteResponse>> => {
   const response = await api.post<ApiResponse<CrearDocenteResponse>>(
-    BASE_URL,
+    `${BASE_URL}/registrar`, // 👈 Añadimos "/registrar" aquí para que coincida con tu backend
     payload,
     {
       headers: {
@@ -55,7 +54,7 @@ export const actualizarDatosDocente = async (
   payload: Partial<CrearDocentePayload>
 ): Promise<ApiResponse<Docente>> => {
   const response = await api.patch<ApiResponse<Docente>>(
-    `${BASE_URL}/${docenteId}`,
+    `${BASE_URL}/actualizar/${docenteId}`,
     payload
   );
   return response.data;
@@ -78,4 +77,3 @@ export const actualizarDocumentosDocente = async (
   );
   return response.data;
 };
-    

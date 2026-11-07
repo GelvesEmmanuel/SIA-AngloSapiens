@@ -32,7 +32,7 @@ const uploadTeacherFields = upload.fields([
 
 // actualizar documentos docente
 router.patch("/actualizardocumento/:id", verificarToken, autorizado,uploadTeacherFields, actualizarDocumentosDocenteController)
-router.post("/docentes", verificarToken, autorizado, uploadTeacherFields,validarSchema(crearDocenteSchema), registrarDocenteController);
+router.post("/registrar", verificarToken, autorizado, uploadTeacherFields,validarSchema(crearDocenteSchema), registrarDocenteController);
 //router.put("/docentes/:id", actualizarDocenteController);
 router.patch("/estado/:id", verificarToken, autorizado, cambiarEstadoDocenteController)
 export default router;

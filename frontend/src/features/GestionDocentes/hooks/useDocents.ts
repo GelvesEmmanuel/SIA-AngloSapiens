@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from "react";
-import { isAxiosError } from "axios";
 
 import {
   listarDocentes,
@@ -9,6 +8,7 @@ import {
   actualizarDatosDocente,
   actualizarDocumentosDocente,
 } from "../gestionDocente.service";
+import { extraerMensajeError } from "../../../api/apiError";
 
 import type {
   Docente,
@@ -31,36 +31,6 @@ type AccionDocente =
       docenteId: string;
     }
   | null;
-
-function obtenerTextoMensaje(valor: unknown): string | undefined {
-  if (typeof valor === "string" && valor.trim()) {
-    return valor;
-  }
-
-  if (valor && typeof valor === "object") {
-    const objeto = valor as Record<string, unknown>;
-
-    for (const campo of ["mensaje", "message", "error"]) {
-      const mensaje = obtenerTextoMensaje(objeto[campo]);
-      if (mensaje) return mensaje;
-    }
-  }
-
-  return undefined;
-}
-
-function obtenerMensajeError(error: unknown): string {
-  if (isAxiosError(error)) {
-    return (
-      obtenerTextoMensaje(error.response?.data) ||
-      "No fue posible completar la operación."
-    );
-  }
-
-  return error instanceof Error
-    ? error.message
-    : "Ocurrió un error inesperado.";
-}
 
 export function useDocentes() {
   const [docentes, setDocentes] = useState<Docente[]>([]);
@@ -124,7 +94,7 @@ export function useDocentes() {
 
   } catch (error: unknown) {
     if (isMounted) {
-      setError(obtenerMensajeError(error));
+      setError(extraerMensajeError(error));
       setDocentes([]);
     }
   } finally {
@@ -151,8 +121,8 @@ export function useDocentes() {
 
       return response.data;
     } catch (error: unknown) {
-      setErrorAccion(obtenerMensajeError(error));
-      return null;
+      setErrorAccion(extraerMensajeError(error));
+      throw error;
     }
   },
   []
@@ -183,7 +153,7 @@ export function useDocentes() {
     return response.data;
 
   } catch (error: unknown) {
-    setErrorAccion(obtenerMensajeError(error));
+    setErrorAccion(extraerMensajeError(error));
     throw error;
   } finally {
     setAccionEnCurso(null);
@@ -199,15 +169,20 @@ export function useDocentes() {
 
       const response = await crearDocente(payload);
 
-      setMensajeExito(
-        obtenerTextoMensaje(response) || "Docente registrado correctamente.",
-      );
+      if (response?.success !== true) {
+        throw new Error(
+          response.message ||
+            "El servidor no confirmó el registro del docente.",
+        );
+      }
+
+      setMensajeExito(response.message || "Docente registrado correctamente.");
 
       recargarDocentes();
 
       return response;
     } catch (error: unknown) {
-      setErrorAccion(obtenerMensajeError(error));
+      setErrorAccion(extraerMensajeError(error));
       throw error;
     } finally {
       setIsCreating(false);
@@ -228,13 +203,13 @@ export function useDocentes() {
       const response = await actualizarDatosDocente(docenteId, payload);
 
       setMensajeExito(
-        obtenerTextoMensaje(response) || "Datos del docente actualizados correctamente.",
+        response.message || "Datos del docente actualizados correctamente.",
       );
 
       recargarDocentes();
       return response;
     } catch (error: unknown) {
-      setErrorAccion(obtenerMensajeError(error));
+      setErrorAccion(extraerMensajeError(error));
       throw error;
     } finally {
       setIsUpdating(false);
@@ -256,13 +231,13 @@ export function useDocentes() {
       const response = await actualizarDocumentosDocente(docenteId, formDataFiles);
 
       setMensajeExito(
-        obtenerTextoMensaje(response) || "Documentos actualizados y versionados correctamente.",
+        response.message || "Documentos actualizados y versionados correctamente.",
       );
 
       recargarDocentes();
       return response;
     } catch (error: unknown) {
-      setErrorAccion(obtenerMensajeError(error));
+      setErrorAccion(extraerMensajeError(error));
       throw error;
     } finally {
       setIsUpdating(false);
@@ -274,6 +249,8 @@ export function useDocentes() {
     setMensajeExito("");
     setErrorAccion("");
   };
+
+  
 
   return {
     docentes,

@@ -18,7 +18,6 @@ export interface ApiResponse<T = null> {
   message: string;
   data: T;
 }
-
 // Estructura completa del Docente (Expediente / Hoja de Vida).
 export interface Docente {
     id: string;

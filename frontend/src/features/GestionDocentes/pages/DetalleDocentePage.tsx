@@ -3,12 +3,13 @@ import { useNavigate, useParams } from "react-router-dom";
 
 import { useDocentes } from "../hooks/useDocents";
 import type { Docente, CategoriaDocumento } from "../docente.types";
+import { extraerMensajeError } from "../../../api/apiError";
 
 export function DetalleDocentePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const { obtenerDetalleDocente, ejecutarCambiarEstado } = useDocentes();
+  const { obtenerDetalleDocente, ejecutarCambiarEstado ,ejecutarActualizarDatos,ejecutarActualizarDocumentos, isUpdating} = useDocentes();
 
   // Estados de la página
   const [docente, setDocente] = useState<Docente | null>(null);
@@ -19,6 +20,19 @@ export function DetalleDocentePage() {
   const [mostrarMotivo, setMostrarMotivo] = useState(false);
   const [mostrarModalInactivacion, setMostrarModalInactivacion] =
   useState(false);
+  const [categoriaSeleccionada, setCategoriaSeleccionada] = useState("CV");
+const [archivoNuevo, setArchivoNuevo] = useState<File | null>(null);
+const [isUploadingDoc, setIsUploadingDoc] = useState(false);
+  // estados para actualizar datos y documentos
+  const [isEditing, setIsEditing] = useState(false);
+const [formData, setFormData] = useState({
+  nombre: "",
+  apellidos: "",
+  telefono: "",
+  formacionAcademica: "",
+  experienciaLaboral: "",
+  reportaDiscapacidad: false,
+});
 
 const [motivoInactivacion, setMotivoInactivacion] = useState("");
   // Cargar expediente del docente
@@ -46,11 +60,11 @@ const [motivoInactivacion, setMotivoInactivacion] = useState("");
           setDocente(null);
           setErrorCargando("No se pudo cargar la información del docente.");
         }
-      } catch (error) {
+      } catch (error: unknown) {
         console.error("Error al cargar el expediente:", error);
 
         if (isMounted) {
-          setErrorCargando("Error de conexión al cargar el expediente.");
+          setErrorCargando(extraerMensajeError(error));
         }
       } finally {
         if (isMounted) {
@@ -95,9 +109,9 @@ const [motivoInactivacion, setMotivoInactivacion] = useState("");
         "El estado se actualizó, pero no fue posible recargar el expediente."
       );
     }
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Error al activar el docente:", error);
-    setErrorAccion("No fue posible activar al docente.");
+    setErrorAccion(extraerMensajeError(error));
   } finally {
     setIsChangingStatus(false);
   }
@@ -131,9 +145,9 @@ const confirmarInactivacion = async () => {
         "El docente fue inactivado, pero no fue posible recargar su expediente."
       );
     }
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Error al inactivar el docente:", error);
-    setErrorAccion("No fue posible inactivar al docente.");
+    setErrorAccion(extraerMensajeError(error));
   } finally {
     setIsChangingStatus(false);
   }
@@ -188,6 +202,76 @@ const confirmarInactivacion = async () => {
       </div>
     );
   }
+
+  //funcion actualizar datos docente
+  
+
+const handleGuardarDatos = async (e: any) => {
+  e.preventDefault();
+  if (!id) return;
+  try {
+    await ejecutarActualizarDatos(id, formData);
+    setIsEditing(false);
+    // Recargamos el docente para ver los cambios reflejados
+    const actualizado = await obtenerDetalleDocente(id);
+    if (actualizado) setDocente(actualizado);
+  } catch (error: unknown) {
+    console.error("Error al actualizar datos:", error);
+    setErrorAccion(extraerMensajeError(error));
+  }
+};
+// funcion actualizar documentos docente
+
+
+const handleActualizarDocumentoSubmit = async (e: any) => {
+    e.preventDefault();
+    if (!archivoNuevo || !id) {
+      alert("Por favor selecciona un archivo.");
+      return;
+    }
+
+    const dataFiles = new FormData();
+    dataFiles.append("categoria", categoriaSeleccionada);
+
+    // 🗺️ Mapeamos la categoría seleccionada al nombre exacto del campo que espera Multer
+    let fieldName = "archivo"; // por defecto
+    switch (categoriaSeleccionada) {
+      case "FOTO":
+        fieldName = "profilePicture";
+        break;
+      case "CEDULA":
+        fieldName = "identityDocument";
+        break;
+      case "CV":
+        fieldName = "cv";
+        break;
+      case "CERTIFICACION":
+      case "DISCAPACIDAD":
+        fieldName = "disabilityCertificate"; // O el nombre que tengas configurado en el backend para estos
+        break;
+      default:
+        fieldName = "cv";
+    }
+
+    // Adjuntamos el archivo usando la llave exacta que espera el backend
+    dataFiles.append(fieldName, archivoNuevo);
+
+    try {
+      setIsUploadingDoc(true);
+      await ejecutarActualizarDocumentos(id, dataFiles);
+      setArchivoNuevo(null);
+      
+      // Recargamos el expediente para ver la nueva URL firmada
+      const actualizado = await obtenerDetalleDocente(id);
+      if (actualizado) setDocente(actualizado);
+      alert("Documento actualizado y versionado correctamente.");
+    } catch (error: unknown) {
+      console.error("Error al actualizar documento:", error);
+      setErrorAccion(extraerMensajeError(error));
+    } finally {
+      setIsUploadingDoc(false);
+    }
+  };
 
   return (
     <div className="mx-auto w-full max-w-5xl space-y-6 p-4 sm:p-6">
@@ -308,6 +392,14 @@ const confirmarInactivacion = async () => {
                 {docente.formacionAcademica || "No especificada"}
               </p>
             </div>
+             <div>
+              <p className="text-xs text-muted font-medium">
+                Expericia Laboral
+              </p>
+              <p className="text-sm text-body">
+                {docente.experienciaLaboral || "No especificada"}
+              </p>
+            </div>
           </div>
 
           {/* Información adicional y documentos */}
@@ -390,6 +482,137 @@ const confirmarInactivacion = async () => {
           </div>
         </div>
       </div>
+     {/* --- SECCIÓN DE EDICIÓN DE DATOS PERSONALES --- */}
+<div className="card p-6 mt-6 space-y-4">
+  <div className="flex justify-between items-center border-b pb-4">
+    <h3 className="text-lg font-semibold text-heading">Gestión de Información Personal</h3>
+    <button
+      type="button"
+      onClick={() => setIsEditing(!isEditing)}
+      className="outline-btn text-xs"
+    >
+      {isEditing ? "Cancelar Edición" : "✏️ Editar Información"}
+    </button>
+  </div>
+
+  {isEditing ? (
+    <form onSubmit={handleGuardarDatos} className="space-y-4 pt-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label className="field-label">Nombre</label>
+          <input
+            type="text"
+            value={formData.nombre}
+            onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+            className="form-input"
+            
+          />
+        </div>
+        <div>
+          <label className="field-label">Apellidos</label>
+          <input
+            type="text"
+            value={formData.apellidos}
+            onChange={(e) => setFormData({ ...formData, apellidos: e.target.value })}
+            className="form-input"
+            
+          />
+        </div>
+        <div>
+          <label className="field-label">Teléfono</label>
+          <input
+            type="text"
+            value={formData.telefono}
+            onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
+            className="form-input"
+          />
+        </div>
+        <div>
+          <label className="field-label">Formación Académica</label>
+          <input
+            type="text"
+            value={formData.formacionAcademica}
+            onChange={(e) => setFormData({ ...formData, formacionAcademica: e.target.value })}
+            className="form-input"
+          />
+        </div>
+        <div>
+          <label className="field-label">Experiencia Laboral</label>
+          <input
+            type="text"
+            value={formData.experienciaLaboral}
+            onChange={(e) => setFormData({ ...formData, experienciaLaboral: e.target.value })}
+            className="form-input"
+          />
+        </div>
+      </div>
+
+      <div className="flex justify-end gap-2 pt-2">
+        <button
+          type="submit"
+          disabled={isUpdating}
+          className="primary-btn text-xs"
+        >
+          {isUpdating ? "Guardando..." : "Guardar Cambios"}
+        </button>
+      </div>
+    </form>
+  ) : (
+    <p className="text-sm text-muted">
+      Haz clic en editar si necesitas modificar los datos de contacto o formación académica del docente.
+    </p>
+  )}
+</div>
+
+
+{/* --- SECCIÓN DE ACTUALIZACIÓN DE DOCUMENTOS (VERSIONADO) --- */}
+<div className="card p-6 mt-6 space-y-4">
+  <h3 className="text-lg font-semibold text-heading border-b pb-4">
+    Actualizar Soporte o Documento
+  </h3>
+  <p className="text-xs text-muted">
+    Subir un nuevo documento para una categoría existente archivará automáticamente la versión anterior (HISTORICO) y dejará esta como VIGENTE.
+  </p>
+
+  <form onSubmit={handleActualizarDocumentoSubmit} className="space-y-4 pt-2">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div>
+        <label className="field-label">Categoría de Documento</label>
+        <select
+          value={categoriaSeleccionada}
+          onChange={(e) => setCategoriaSeleccionada(e.target.value)}
+          className="form-input"
+        >
+          <option value="FOTO">Foto de Perfil</option>
+          <option value="CEDULA">Cédula / Documento de Identidad</option>
+          <option value="CV">Hoja de Vida (CV)</option>
+          <option value="CERTIFICACION">Certificación</option>
+          <option value="DISCAPACIDAD">Certificado de Discapacidad</option>
+        </select>
+      </div>
+
+      <div>
+        <label className="field-label">Seleccionar Archivo Nuevo (PDF o Imagen)</label>
+        <input
+          type="file"
+          onChange={(e) => setArchivoNuevo(e.target.files?.[0] || null)}
+          className="form-input text-xs py-2"
+          required
+        />
+      </div>
+    </div>
+
+    <div className="flex justify-end pt-2">
+      <button
+        type="submit"
+        disabled={isUploadingDoc}
+        className="primary-btn text-xs"
+      >
+        {isUploadingDoc ? "Subiendo y Versionando..." : "📤 Actualizar Documento"}
+      </button>
+    </div>
+  </form>
+</div>
       {mostrarMotivo && (
   <div
     className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"

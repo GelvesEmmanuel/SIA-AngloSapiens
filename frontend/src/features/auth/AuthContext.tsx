@@ -86,20 +86,21 @@ export function AuthProvider({
 
       const response =
         await authService.cambiarContrasena(payload);
-        try {
-  sessionStorage.setItem(
-    "sia.auth.passwordChangedNotice",
-    "true"
-  );
-} catch {
-  // La confirmación es opcional si el almacenamiento no está disponible.
-}
 
       if (!response.exito) {
         throw new Error(
           response.mensaje ||
             "No fue posible cambiar la contraseña."
         );
+      }
+
+      try {
+        sessionStorage.setItem(
+          "sia.auth.passwordChangedNotice",
+          "true"
+        );
+      } catch {
+        // La confirmación es opcional si el almacenamiento no está disponible.
       }
 
       // El backend invalida el JWT anterior.

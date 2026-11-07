@@ -5,6 +5,7 @@ import { Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import { AppError } from '../utils/appError.utils.js';
 
 
 //crear carpeta uploads si no existe
@@ -38,7 +39,12 @@ const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilt
   if (allowedTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new Error('Solo se permiten imágenes (JPG, PNG) o PDF'));
+    cb(new AppError(
+      'Solo se permiten imágenes (JPG, PNG) o PDF.',
+      400,
+      'TIPO_ARCHIVO_INVALIDO',
+      [{ field: file.fieldname, message: 'Formato de archivo no permitido.' }]
+    ));
   }
 };
 

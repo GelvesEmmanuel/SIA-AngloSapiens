@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { isAxiosError } from "axios";
+import { extraerMensajeError } from "../../../api/apiError";
 
 import {
   listarUsuarios,
@@ -41,19 +41,6 @@ function obtenerTextoMensaje(valor: unknown): string | undefined {
   }
 
   return undefined;
-}
-
-function obtenerMensajeError(error: unknown): string {
-  if (isAxiosError(error)) {
-    return (
-      obtenerTextoMensaje(error.response?.data) ||
-      "No fue posible completar la operación."
-    );
-  }
-
-  return error instanceof Error
-    ? error.message
-    : "Ocurrió un error inesperado.";
 }
 
 export function useUsers() {
@@ -106,7 +93,7 @@ export function useUsers() {
         }
       } catch (error: unknown) {
         if (isMounted) {
-          setError(obtenerMensajeError(error));
+          setError(extraerMensajeError(error));
         }
       } finally {
         if (isMounted) {
@@ -138,7 +125,7 @@ export function useUsers() {
 
       recargarUsuarios();
     } catch (error: unknown) {
-      setErrorAccion(obtenerMensajeError(error));
+      setErrorAccion(extraerMensajeError(error));
       throw error;
     } finally {
       setAccionEnCurso(null);
@@ -159,7 +146,7 @@ export function useUsers() {
           "La contraseña fue restablecida correctamente.",
       );
     } catch (error: unknown) {
-      setErrorAccion(obtenerMensajeError(error));
+      setErrorAccion(extraerMensajeError(error));
       throw error;
     } finally {
       setAccionEnCurso(null);
@@ -184,7 +171,7 @@ export function useUsers() {
 
       return response;
     } catch (error: unknown) {
-      setErrorAccion(obtenerMensajeError(error));
+      setErrorAccion(extraerMensajeError(error));
       throw error;
     } finally {
       setIsCreating(false);

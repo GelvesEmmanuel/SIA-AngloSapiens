@@ -34,13 +34,6 @@ export interface CambiarContrasenaResponse {
   mensaje: string;
 }
 
-export interface ApiErrorResponse {
-  exito?: boolean;
-  error?: string;
-  mensaje?: string;
-  requiereCambioContrasena?: boolean;
-}
-
 export interface AuthSession {
   token: string;
   rol: UserRole;

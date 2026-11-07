@@ -7,7 +7,8 @@ import LoginPage from "../features/auth/pages/LoginPage";
 import ChangePasswordPage from "../features/auth/pages/CambiarContraseñapage";
 import HomePage from "../features/home/HomePage";
 import UsersPage from "../features/users/pages/UsersPage";
-import { GestionDocentePage } from "../features/GestionDocentes/pages/GestionDocentepage";
+import { GestionDocentePage } from "../features/GestionDocentes/pages/GestionDocentePage";
+import {RegistrarDocentePage} from "../features/GestionDocentes/pages/RegistroDOcentePage";
 import { DashboardLayout } from "./layouts/DashboardLayout";
 import DetalleDocentePage from "../features/GestionDocentes/pages/DetalleDocentePage";
 
@@ -48,7 +49,7 @@ export function AppRouter() {
         <Route index element={<GestionDocentePage />} />
       </Route>
       <Route
-  path="/docentes"
+  path="/docentes/detalle"
   element={
     <RequireAuth>
       <DashboardLayout />
@@ -61,6 +62,16 @@ export function AppRouter() {
     path=":id"
     element={<DetalleDocentePage />}
   />
+</Route>
+<Route
+  path="/docentes/registrar"
+  element={
+    <RequireAuth>
+      <DashboardLayout />
+    </RequireAuth>
+  }
+>
+  <Route index element={<RegistrarDocentePage />} />
 </Route>
       <Route
         path="/cambiar-contrasena"

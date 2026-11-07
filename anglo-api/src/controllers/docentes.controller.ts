@@ -1,5 +1,5 @@
 // se maneja la peticion http extrayendo los datos del req.body y llamndo el servicio desede docente.service.ts
-import { Request, Response } from "express";
+import { Request, Response, NextFunction } from "express";
 import {
   registrarDocente,
   obtenerDocentes,
@@ -11,19 +11,69 @@ import {
   actualizarDocumentosDocenteService
 
 } from "../services/docente.service.js";
-import {subirArchivo, obtenerUrlFirmada} from "../services/storage.service.js";
+import {subirArchivo} from "../services/storage.service.js";
 import {guardarOActualizarArchivosEnBD} from "../services/archivos.service.js";
 import type { InsertDocente } from "../types/docentes.types.js";
 import { EstadoDocente } from "../types/docentes.types.js";
-import fs from "fs/promises";
+import { AppError } from "../utils/appError.utils.js";
+import { cleanupTemporaryFiles } from "../utils/uploadCleanup.utils.js";
 
+const isErrorWithCode = (error: unknown, code: string) =>
+  typeof error === "object" &&
+  error !== null &&
+  "code" in error &&
+  error.code === code;
 
+const mapDocenteError = (
+  error: unknown,
+  mapDatabaseDuplicate = false
+): unknown => {
+  if (error instanceof AppError) {
+    return error;
+  }
+
+  const message = error instanceof Error ? error.message : "";
+  if (
+    message === "DOCUMENTO_IDENTIDAD_DUPLICADO" ||
+    (mapDatabaseDuplicate && isErrorWithCode(error, "23505"))
+  ) {
+    return new AppError(
+      "No se pudo completar el registro del docente.",
+      409,
+      "DOCUMENTO_DUPLICADO",
+      [
+        {
+          field: "numeroDocumento",
+          message:
+            "El número de documento de identidad ingresado ya se encuentra registrado en el sistema.",
+        },
+      ]
+    );
+  }
+
+  if (message === "DOCENTE_NO_ENCONTRADO") {
+    return new AppError("El docente especificado no existe.", 404, "DOCENTE_NO_ENCONTRADO");
+  }
+
+  if (message === "MOTIVO_INACTIVACION_REQUERIDO") {
+    return new AppError(
+      "Es obligatorio ingresar un motivo para inactivar al docente.",
+      400,
+      "MOTIVO_INACTIVACION_REQUERIDO",
+      [{ field: "motivoInactivacion", message: "Este campo es obligatorio." }]
+    );
+  }
+
+  return error;
+};
 
 export const registrarDocenteController = async (
   req: Request,
   res: Response,
+  next: NextFunction
 ) => {
   const uploadFilesPaths: string[] = []; // Para limpieza si ocurre un error global
+  let requestSucceeded = false;
   try {
     //1. obtner el ID del ADmin logueado desde el token midleware
  const usuarioAdminId = (req as any).user?.usuarioId;
@@ -65,10 +115,11 @@ export const registrarDocenteController = async (
     }
 
     if(archivosFaltantes.length > 0) {
-      return res.status(400).json({
-        success: false,
-        error: `Faltan archivos obligatorios: ${archivosFaltantes.join(', ')}`,
-      });
+      throw new AppError(
+        `Faltan archivos obligatorios: ${archivosFaltantes.join(", ")}`,
+        400,
+        "ARCHIVOS_FALTANTES"
+      );
     }
 
     //2.procesar y subir los archivos a storage supabase si existen
@@ -99,10 +150,9 @@ export const registrarDocenteController = async (
       }
     }
 
-    console.log(data+"datos del docente a registrar","archivos subidos: ", uploadFilesPaths);
     // (Opcional por seguridad) Validar que exista
     if (!usuarioAdminId) {
-      return res.status(401).json({ success: false, error: 'No autorizado: Falta información del usuario en el token' });
+      throw new AppError("Falta información del usuario en el token.", 401, "NO_AUTORIZADO");
     }
     // Pasamos el objeto completo al servicio
     const nuevoDocente = await registrarDocente(data, usuarioAdminId);
@@ -115,132 +165,96 @@ export const registrarDocenteController = async (
       );
     }
 
+    requestSucceeded = true;
     return res.status(201).json({
       success: true,
       message: "Docente registrado con éxito",
-      data: nuevoDocente, documentPaths: documentPaths // Retornamos las rutas de los documentos subidos,
+      data: nuevoDocente,
+      documentPaths
     });
-  } catch (error: any) {
-    for (const filePath of uploadFilesPaths) {
-        await fs.unlink(filePath).catch(() => {});
-      }
-        // =================================================================
-  // NUEVA VALIDACIÓN: Interceptar errores de lógica de negocio
-  // =================================================================
-  if (error.message === "DOCUMENTO_IDENTIDAD_DUPLICADO") {
-    return res.status(400).json({
-      status: "error",
-      tipo: "VALIDACION_NEGOCIO",
-      error: "El número de documento de identidad ingresado ya se encuentra registrado en el sistema."
-    });
-  
-}
-      console.error('Error al registrar estudiante:', error);
-      return res.status(500).json({
-        ok: false,
-        error: error.message || 'Error interno al registrar el docente'
-      });
-  
-}finally{
-  for (const filePath of uploadFilesPaths) {
-      await fs.unlink(filePath).catch(() => {});
+  } catch (error: unknown) {
+    return next(mapDocenteError(error, true));
+  } finally {
+    if (requestSucceeded) {
+      await cleanupTemporaryFiles(uploadFilesPaths);
     }
-}
+  }
 }
 
 // obetner usuarios controller
 
-export const listarDocentesController =  async (req: Request, res: Response) => {
-
-  try{
-    
+export const listarDocentesController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
     const estado = req.query.estado as string | undefined;
     const busqueda = req.query.busqueda as string | undefined;
-   const docentesListados = await obtenerDocentes({estado, busqueda});
+    const docentesListados = await obtenerDocentes({ estado, busqueda });
     return res.status(200).json({
-      success:true,
-      mensaje: 'Docentes listados exitosamente',
+      success: true,
+      message: "Docentes listados exitosamente",
       data: docentesListados,
     });
-
-  }catch(error: any){
-    console.error('Error al listar docentes:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error interno al obtener los docentes.',
-      error: error.message,
-    });
-
+  } catch (error: unknown) {
+    return next(mapDocenteError(error));
   }
-
-
-
-}
+};
 
 
 // controlador para obetner los datos del docente y los documentos mediante url
-export const obtenerDocenteConArchivosPorIdController = async (req: Request, res: Response) => {
-    try{
-
-        const params = req.params as Record<string, string>;
-        const id = params.id;
-        if(!id){
-          return res.status(400).json({
-            success:false,
-            message: "El ID del docente es obligatorio"
-          });
-          return;
-        }
-        console.log("ID del docente a buscar:", id);
-
-        // servicio unifiado para datos y archivos
-        const docenteConArchivos = await obtenerDocenteConArchivosPorId(id as string);
-
-        if(!docenteConArchivos){
-            return res.status(404).json({
-                success:false,message: "Docente no encontrado"
-        });
+export const obtenerDocenteConArchivosPorIdController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const rawId = req.params.id;
+    const id = Array.isArray(rawId) ? rawId[0] : rawId;
+    if (!id) {
+      throw new AppError("El ID del docente es obligatorio.", 400, "ID_REQUERIDO", [
+        { field: "id", message: "Este parámetro es obligatorio." },
+      ]);
     }
-        return res.status(200).json({
-            success:true,
-            message: "Dcoente encontrado exitosamente",
-            data: docenteConArchivos
-        });
 
-    }catch(error: any){
-      if(error.message === "DOCENTE_NO_ENCONTRADO") {
-        return res.status(404).json({
-          success: false,
-          message: "Docente no encontrado",
-        });
-      }
-
-
-        return res.status(500).json(
-            {
-                success:false,
-                message: 'error interno al obtner el usuario',
-                error: error.message
-            }
-        );
+    const docenteConArchivos = await obtenerDocenteConArchivosPorId(id);
+    if (!docenteConArchivos) {
+      throw new AppError("El docente especificado no existe.", 404, "DOCENTE_NO_ENCONTRADO");
     }
-}
 
-export const cambiarEstadoDocenteController = async (req: Request, res: Response) =>{
+    return res.status(200).json({
+      success: true,
+      message: "Docente encontrado exitosamente",
+      data: docenteConArchivos,
+    });
+  } catch (error: unknown) {
+    return next(mapDocenteError(error));
+  }
+};
+
+export const cambiarEstadoDocenteController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
 
   try {
     const { id } = req.params;
     const { nuevoEstado, motivoInactivacion } = req.body;
 
-    // Validación rápida en el controlador de que el estado enviado sea válido en el ENUM
     if (!Object.values(EstadoDocente).includes(nuevoEstado)) {
-      return res.status(400).json({
-        success: false,
-        error: "El estado proporcionado no es válido."
-      });
+      throw new AppError("El estado proporcionado no es válido.", 400, "ESTADO_INVALIDO", [
+        { field: "nuevoEstado", message: "Seleccione un estado válido." },
+      ]);
     }
 
-    // Llamamos al servicio pasando los parámetros estructurados
+    if (!id) {
+      throw new AppError("El ID del docente es obligatorio.", 400, "ID_REQUERIDO", [
+        { field: "id", message: "Este parámetro es obligatorio." },
+      ]);
+    }
+
     const docenteModificado = await cambiarEstadoDocente({
       docenteId: String(id),
       nuevoEstado: nuevoEstado as EstadoDocente,
@@ -253,21 +267,8 @@ export const cambiarEstadoDocenteController = async (req: Request, res: Response
       data: docenteModificado
     });
 
-  } catch (error: any) {
-    // Atrapamos los errores controlados del servicio
-    if (error.message === "DOCENTE_NO_ENCONTRADO") {
-      return res.status(404).json({ success: false, error: "El docente especificado no existe." });
-    }
-    
-    if (error.message === "MOTIVO_INACTIVACION_REQUERIDO") {
-      return res.status(400).json({ 
-        success: false, 
-        error: "Es obligatorio ingresar un motivo para inactivar al docente." 
-      });
-    }
-
-    console.error("Error en actualizarEstadoController:", error);
-    return res.status(500).json({ success: false, error: "Error interno del servidor." });
+  } catch (error: unknown) {
+    return next(mapDocenteError(error));
   }
 }
 
@@ -276,6 +277,7 @@ export const cambiarEstadoDocenteController = async (req: Request, res: Response
 export const actualizarDatosDocenteController = async (
   req: Request,
   res: Response,
+  next: NextFunction,
 ) => {
   try {
     const usuarioAdminId = (req as any).user?.usuarioId;
@@ -283,11 +285,17 @@ export const actualizarDatosDocenteController = async (
     const docenteId = params.id;
 
     if (!usuarioAdminId) {
-      return res.status(401).json({ success: false, error: 'No autorizado: Falta información del usuario' });
+      throw new AppError(
+        "No autorizado: falta información del usuario.",
+        401,
+        "NO_AUTORIZADO"
+      );
     }
 
     if (!docenteId) {
-      return res.status(400).json({ success: false, error: 'El ID del docente es obligatorio' });
+      throw new AppError("El ID del docente es obligatorio.", 400, "ID_REQUERIDO", [
+        { field: "id", message: "Este parámetro es obligatorio." },
+      ]);
     }
 
     // Mapeamos EXCLUSIVAMENTE los campos que sí son editables tras el registro
@@ -318,17 +326,8 @@ export const actualizarDatosDocenteController = async (
       data: docenteActualizado,
     });
 
-  } catch (error: any) {
-    console.error('Error al actualizar datos del docente:', error);
-
-    if (error.message === "DOCENTE_NO_ENCONTRADO") {
-      return res.status(404).json({ success: false, error: "El docente especificado no existe." });
-    }
-
-    return res.status(500).json({
-      success: false,
-      error: error.message || 'Error interno al actualizar los datos del docente'
-    });
+  } catch (error: unknown) {
+    return next(mapDocenteError(error));
   }
 };
 
@@ -337,29 +336,42 @@ export const actualizarDatosDocenteController = async (
 export const actualizarDocumentosDocenteController = async (
   req: Request,
   res: Response,
+  next: NextFunction,
 ) => {
   const uploadFilesPaths: string[] = []; // Para limpieza local si ocurre error
+  let requestSucceeded = false;
   try {
     const usuarioAdminId = (req as any).user?.usuarioId;
     const params = req.params as Record<string, string>;
     const docenteId = params.id;
 
     if (!usuarioAdminId) {
-      return res.status(401).json({ success: false, error: 'No autorizado: Falta información del usuario en el token' });
+      throw new AppError(
+        "No autorizado: falta información del usuario en el token.",
+        401,
+        "NO_AUTORIZADO"
+      );
     }
 
     if (!docenteId) {
-      return res.status(400).json({ success: false, error: 'El ID del docente es obligatorio en los parámetros' });
+      throw new AppError(
+        "El ID del docente es obligatorio en los parámetros.",
+        400,
+        "ID_REQUERIDO",
+        [{ field: "id", message: "Este parámetro es obligatorio." }]
+      );
     }
 
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
     const documentPaths: Record<string, string> = {};
 
     if (!files || Object.keys(files).length === 0) {
-      return res.status(400).json({
-        success: false,
-        error: "Debe adjuntar al menos un documento para realizar la actualización.",
-      });
+      throw new AppError(
+        "Debe adjuntar al menos un documento para realizar la actualización.",
+        400,
+        "ARCHIVOS_REQUERIDOS",
+        [{ field: "files", message: "Adjunte al menos un documento." }]
+      );
     }
 
     // 1. Procesar y subir los nuevos archivos a Supabase Storage
@@ -387,6 +399,7 @@ export const actualizarDocumentosDocenteController = async (
     // 2. Ejecutar servicio de actualización transaccional
     await actualizarDocumentosDocenteService(docenteId, documentPaths, usuarioAdminId);
 
+    requestSucceeded = true;
     return res.status(200).json({
       success: true,
       message: "Documentos del docente actualizados con éxito (versiones anteriores archivadas como inactivas)",
@@ -395,26 +408,11 @@ export const actualizarDocumentosDocenteController = async (
       }
     });
 
-  } catch (error: any) {
-    // Limpieza de archivos locales en disco si hubo error
-    for (const filePath of uploadFilesPaths) {
-      await fs.unlink(filePath).catch(() => {});
-    }
-
-    console.error('Error al actualizar documentos del docente:', error);
-
-    if (error.message === "DOCENTE_NO_ENCONTRADO") {
-      return res.status(404).json({ success: false, error: "El docente especificado no existe en el sistema." });
-    }
-
-    return res.status(500).json({
-      success: false,
-      error: error.message || 'Error interno al actualizar los documentos del docente'
-    });
+  } catch (error: unknown) {
+    return next(mapDocenteError(error));
   } finally {
-    // Garantizar limpieza de archivos temporales de Multer
-    for (const filePath of uploadFilesPaths) {
-      await fs.unlink(filePath).catch(() => {});
+    if (requestSucceeded) {
+      await cleanupTemporaryFiles(uploadFilesPaths);
     }
   }
 };

@@ -16,7 +16,7 @@ export function GestionDocentePage() {
     recargarDocentes,
     mensajeExito,
     errorAccion,
-    limpiarMensajes,
+    //limpiarMensajes,
   } = useDocentes();
 
   // Indicadores
@@ -48,11 +48,9 @@ export function GestionDocentePage() {
 
         <button
           type="button"
-          onClick={() => {
-            limpiarMensajes();
-            // Conectar con el modal o la ruta de registro.
-            // navigate("/docentes/crear");
-          }}
+          onClick={() =>
+                          navigate(`/docentes/registrar`)
+                        }
           className="primary-btn"
         >
           + Registrar docente
@@ -225,7 +223,6 @@ export function GestionDocentePage() {
                 <th className="px-5 py-3">Código</th>
                 <th className="px-5 py-3">Docente</th>
                 <th className="px-5 py-3">Documento</th>
-                <th className="px-5 py-3">Correo</th>
                 <th className="px-5 py-3">Estado</th>
                 <th className="px-5 py-3 text-right">Acciones</th>
               </tr>
@@ -311,7 +308,7 @@ export function GestionDocentePage() {
                       <button
                         type="button"
                         onClick={() =>
-                          navigate(`/docentes/${docente.id}`)
+                          navigate(`/docentes/detalle/${docente.id}`)
                         }
                         className="primary-btn px-3 py-1.5 text-xs"
                       >

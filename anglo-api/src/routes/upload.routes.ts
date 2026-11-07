@@ -1,7 +1,7 @@
 // src/routes/upload.routes.js
 import { Router } from 'express';
 import { upload } from '../libs/multer.libs.js';
-import { validarArchivosPorCampos } from '../middlewares/validarArchivo.middlewat.js';
+import { validarArchivosPorCampos } from '../middlewares/validarArchivo.middleware.js';
 import {registrarUsuarioConArchivos } from '../controllers/upload.controller.js';
 
 const router = Router();

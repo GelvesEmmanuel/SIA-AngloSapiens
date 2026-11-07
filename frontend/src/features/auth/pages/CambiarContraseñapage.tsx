@@ -1,9 +1,8 @@
 
 import { useState, type FormEvent } from "react";
-import { isAxiosError } from "axios";
 
 import { useAuth } from "../useAuth";
-import type { ApiErrorResponse } from "../auth.types";
+import { extraerMensajeError } from "../../../api/apiError";
 
 export default function ChangePasswordPage() {
   const { cambiarContrasena } = useAuth();
@@ -41,25 +40,7 @@ export default function ChangePasswordPage() {
         nuevaContrasena,
       });
     } catch (error: unknown) {
-      if (isAxiosError<ApiErrorResponse>(error)) {
-        const data = error.response?.data;
-
-        if (data?.error || data?.mensaje) {
-          setErrorMessage(
-            data.error ?? data.mensaje ?? "No fue posible cambiar la contraseña."
-          );
-        } else if (!error.response) {
-          setErrorMessage("No fue posible conectar con el servidor.");
-        } else {
-          setErrorMessage(
-            "No fue posible cambiar la contraseña. Inténtalo nuevamente."
-          );
-        }
-      } else if (error instanceof Error) {
-        setErrorMessage(error.message);
-      } else {
-        setErrorMessage("Ocurrió un error inesperado.");
-      }
+      setErrorMessage(extraerMensajeError(error));
     } finally {
       setIsSubmitting(false);
     }
