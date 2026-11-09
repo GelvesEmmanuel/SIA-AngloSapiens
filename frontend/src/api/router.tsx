@@ -11,6 +11,8 @@ import { GestionDocentePage } from "../features/GestionDocentes/pages/GestionDoc
 import {RegistrarDocentePage} from "../features/GestionDocentes/pages/RegistroDOcentePage";
 import { DashboardLayout } from "./layouts/DashboardLayout";
 import DetalleDocentePage from "../features/GestionDocentes/pages/DetalleDocentePage";
+import { GestionEstudiantesPage } from "../features/GestionEstudiantes/pages/GestionEstudiante";
+import { RegistrarEstudiantePage } from "../features/GestionEstudiantes/pages/RegistrarEstudiante";
 
 export function AppRouter() {
   return (
@@ -35,6 +37,27 @@ export function AppRouter() {
       >
         
         <Route index element={<UsersPage />} />
+      </Route>
+
+      <Route
+        path="/estudiantes"
+        element={
+          <RequireAuth>
+            <DashboardLayout />
+          </RequireAuth>
+        }
+      >
+        <Route index element={<GestionEstudiantesPage />} />
+      </Route>
+      <Route
+        path="/estudiantes/registrar"
+        element={
+          <RequireAuth>
+            <DashboardLayout />
+          </RequireAuth>
+        }
+      >
+        <Route index element={<RegistrarEstudiantePage />} />
       </Route>
 
       <Route
