@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 
 import { RequireAuth } from "./guards/RequireAuth";
+import { RequireRouteAccess } from "./guards/RequireRouteAccess";
 import { GuestOnlyRoute } from "./guards/GuestOnlyRoute";
 
 import LoginPage from "../features/auth/pages/LoginPage";
@@ -31,7 +32,9 @@ export function AppRouter() {
         path="/usuarios"
         element={
           <RequireAuth>
-            <DashboardLayout />
+            <RequireRouteAccess>
+              <DashboardLayout />
+            </RequireRouteAccess>
           </RequireAuth>
         }
       >
@@ -43,7 +46,9 @@ export function AppRouter() {
         path="/estudiantes"
         element={
           <RequireAuth>
-            <DashboardLayout />
+            <RequireRouteAccess>
+              <DashboardLayout />
+            </RequireRouteAccess>
           </RequireAuth>
         }
       >
@@ -53,7 +58,9 @@ export function AppRouter() {
         path="/estudiantes/registrar"
         element={
           <RequireAuth>
-            <DashboardLayout />
+            <RequireRouteAccess>
+              <DashboardLayout />
+            </RequireRouteAccess>
           </RequireAuth>
         }
       >
@@ -64,7 +71,9 @@ export function AppRouter() {
         path="/docentes"
         element={
           <RequireAuth>
-            <DashboardLayout />
+            <RequireRouteAccess>
+              <DashboardLayout />
+            </RequireRouteAccess>
           </RequireAuth>
         }
       >
@@ -75,7 +84,9 @@ export function AppRouter() {
   path="/docentes/detalle"
   element={
     <RequireAuth>
-      <DashboardLayout />
+      <RequireRouteAccess>
+        <DashboardLayout />
+      </RequireRouteAccess>
     </RequireAuth>
   }
 >
@@ -90,7 +101,9 @@ export function AppRouter() {
   path="/docentes/registrar"
   element={
     <RequireAuth>
-      <DashboardLayout />
+      <RequireRouteAccess>
+        <DashboardLayout />
+      </RequireRouteAccess>
     </RequireAuth>
   }
 >
@@ -109,7 +122,9 @@ export function AppRouter() {
         path="/inicio"
         element={
           <RequireAuth>
-            <DashboardLayout />
+            <RequireRouteAccess>
+              <DashboardLayout />
+            </RequireRouteAccess>
           </RequireAuth>
         }
       >

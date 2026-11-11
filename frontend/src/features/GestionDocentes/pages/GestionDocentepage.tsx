@@ -1,9 +1,58 @@
 
+import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDocentes } from "../hooks/useDocents";
+import {
+  actualizarDocumentosDocente,
+  buscarUsuarioDisponibleParaDocencia,
+  vincularDocenteAUsuarioExistente,
+} from "../gestionDocente.service";
+import { extraerMensajeError } from "../../../api/apiError";
+import type {
+  Docente,
+  UsuarioDisponibleDocencia,
+  VincularDocentePayload,
+} from "../docente.types";
+
+type ArchivosDocente = {
+  profilePicture: File | null;
+  identityDocument: File | null;
+  cv: File | null;
+  disabilityCertificate: File | null;
+};
+
+const archivosVacios: ArchivosDocente = {
+  profilePicture: null,
+  identityDocument: null,
+  cv: null,
+  disabilityCertificate: null,
+};
+
+const datosDocenteVacio: VincularDocentePayload = {
+  tipoDocumento: "CC",
+  fechaNacimiento: "",
+  telefono: "",
+  correo: "",
+  formacionAcademica: "",
+  experienciaLaboral: "",
+  reportaDiscapacidad: false,
+};
 
 export function GestionDocentePage() {
   const navigate = useNavigate();
+  const [mostrarVinculacion, setMostrarVinculacion] = useState(false);
+  const [documentoBusqueda, setDocumentoBusqueda] = useState("");
+  const [usuarioEncontrado, setUsuarioEncontrado] =
+    useState<UsuarioDisponibleDocencia | null>(null);
+  const [buscandoUsuario, setBuscandoUsuario] = useState(false);
+  const [vinculandoDocente, setVinculandoDocente] = useState(false);
+  const [errorVinculacion, setErrorVinculacion] = useState("");
+  const [mensajeVinculacion, setMensajeVinculacion] = useState("");
+  const [docenteVinculado, setDocenteVinculado] = useState<Docente | null>(null);
+  const [datosDocente, setDatosDocente] =
+    useState<VincularDocentePayload>(datosDocenteVacio);
+  const [archivosDocente, setArchivosDocente] =
+    useState<ArchivosDocente>(archivosVacios);
 
   const {
     docentes,
@@ -28,7 +77,95 @@ export function GestionDocentePage() {
   const inactivos = listaDocentes.filter(
     (d) => d.estado === "INACTIVO"
   ).length;
- 
+
+  const buscarCoordinador = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setErrorVinculacion("");
+    setMensajeVinculacion("");
+    setUsuarioEncontrado(null);
+    setBuscandoUsuario(true);
+
+    try {
+      const response = await buscarUsuarioDisponibleParaDocencia(
+        documentoBusqueda.trim(),
+      );
+      setUsuarioEncontrado(response.data);
+    } catch (error: unknown) {
+      setErrorVinculacion(extraerMensajeError(error));
+    } finally {
+      setBuscandoUsuario(false);
+    }
+  };
+
+  const vincularComoDocente = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!usuarioEncontrado) return;
+
+    setErrorVinculacion("");
+    setMensajeVinculacion("");
+    setVinculandoDocente(true);
+
+    try {
+      const response = await vincularDocenteAUsuarioExistente(
+        usuarioEncontrado.usuarioId,
+        datosDocente,
+      );
+      setDocenteVinculado(response.data);
+
+      const documentos = new FormData();
+      if (archivosDocente.profilePicture) {
+        documentos.append("profilePicture", archivosDocente.profilePicture);
+      }
+      if (archivosDocente.identityDocument) {
+        documentos.append("identityDocument", archivosDocente.identityDocument);
+      }
+      if (archivosDocente.cv) {
+        documentos.append("cv", archivosDocente.cv);
+      }
+      if (
+        datosDocente.reportaDiscapacidad &&
+        archivosDocente.disabilityCertificate
+      ) {
+        documentos.append(
+          "disabilityCertificate",
+          archivosDocente.disabilityCertificate,
+        );
+      }
+
+      if ([...documentos.keys()].length > 0) {
+        try {
+          await actualizarDocumentosDocente(response.data.id, documentos);
+        } catch (error: unknown) {
+          setErrorVinculacion(
+            `El perfil docente se vinculó, pero no se pudieron guardar algunos documentos: ${extraerMensajeError(error)}. Puedes completarlos desde el expediente.`,
+          );
+          recargarDocentes();
+          return;
+        }
+      }
+
+      setMensajeVinculacion(
+        "El perfil docente quedó vinculado a la cuenta existente.",
+      );
+      recargarDocentes();
+    } catch (error: unknown) {
+      setErrorVinculacion(extraerMensajeError(error));
+    } finally {
+      setVinculandoDocente(false);
+    }
+  };
+
+  const cerrarVinculacion = () => {
+    if (vinculandoDocente) return;
+    setMostrarVinculacion(false);
+    setDocumentoBusqueda("");
+    setUsuarioEncontrado(null);
+    setDatosDocente(datosDocenteVacio);
+    setArchivosDocente(archivosVacios);
+    setDocenteVinculado(null);
+    setErrorVinculacion("");
+    setMensajeVinculacion("");
+  };
 
 
   return (
@@ -46,15 +183,22 @@ export function GestionDocentePage() {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() =>
-                          navigate(`/docentes/registrar`)
-                        }
-          className="primary-btn"
-        >
-          + Registrar docente
-        </button>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <button
+            type="button"
+            onClick={() => setMostrarVinculacion(true)}
+            className="outline-btn"
+          >
+            Vincular coordinador existente
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate("/docentes/registrar")}
+            className="primary-btn"
+          >
+            + Registrar docente
+          </button>
+        </div>
 
       </header>
 
@@ -325,6 +469,289 @@ export function GestionDocentePage() {
         </div>
 
       </section>
+
+      {mostrarVinculacion && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/40 p-4">
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="vincular-docente-titulo"
+            className="my-auto max-h-[95vh] w-full max-w-3xl overflow-y-auto rounded-xl bg-white shadow-xl"
+          >
+            <header className="flex items-start justify-between border-b border-border p-5">
+              <div>
+                <h2 id="vincular-docente-titulo" className="text-lg font-bold text-navy">
+                  Vincular coordinador como docente
+                </h2>
+                <p className="mt-1 text-sm text-muted">
+                  Se conserva la cuenta existente y solo se completa la
+                  información propia del perfil docente y los documentos que
+                  selecciones.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={cerrarVinculacion}
+                disabled={vinculandoDocente}
+                className="text-xl text-muted hover:text-red disabled:opacity-50"
+                aria-label="Cerrar"
+              >
+                ×
+              </button>
+            </header>
+
+            <div className="space-y-5 p-5">
+              {!docenteVinculado ? (
+                <>
+                  <form onSubmit={buscarCoordinador} className="space-y-3">
+                    <label htmlFor="documento-coordinador-docente" className="field-label">
+                      Documento de identidad del coordinador
+                    </label>
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <input
+                        id="documento-coordinador-docente"
+                        value={documentoBusqueda}
+                        onChange={(event) => setDocumentoBusqueda(event.target.value)}
+                        className="form-input flex-1"
+                        minLength={5}
+                        required
+                      />
+                      <button
+                        type="submit"
+                        disabled={buscandoUsuario || vinculandoDocente}
+                        className="outline-btn disabled:opacity-50"
+                      >
+                        {buscandoUsuario ? "Buscando..." : "Buscar cuenta"}
+                      </button>
+                    </div>
+                  </form>
+
+                  {usuarioEncontrado && (
+                    <form onSubmit={vincularComoDocente} className="space-y-5">
+                      <div className="rounded-lg border border-border bg-surface-muted p-4">
+                        <p className="font-semibold text-heading">
+                          {usuarioEncontrado.nombre} {usuarioEncontrado.apellidos}
+                        </p>
+                        <p className="mt-1 text-sm text-muted">
+                          Documento: {usuarioEncontrado.documentoIdentidad} ·
+                          Usuario: {usuarioEncontrado.username}
+                        </p>
+                        <p className="mt-1 text-xs text-muted">
+                          Roles actuales: {usuarioEncontrado.roles.join(", ")}
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div>
+                          <label htmlFor="tipo-documento-vincular" className="field-label">
+                            Tipo de documento *
+                          </label>
+                          <select
+                            id="tipo-documento-vincular"
+                            value={datosDocente.tipoDocumento}
+                            onChange={(event) =>
+                              setDatosDocente((current) => ({
+                                ...current,
+                                tipoDocumento: event.target.value as VincularDocentePayload["tipoDocumento"],
+                              }))
+                            }
+                            className="form-input"
+                          >
+                            <option value="CC">Cédula de ciudadanía</option>
+                            <option value="CE">Cédula de extranjería</option>
+                            <option value="TI">Tarjeta de identidad</option>
+                            <option value="PAS">Pasaporte</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label htmlFor="fecha-nacimiento-vincular" className="field-label">
+                            Fecha de nacimiento *
+                          </label>
+                          <input
+                            id="fecha-nacimiento-vincular"
+                            type="date"
+                            value={datosDocente.fechaNacimiento}
+                            onChange={(event) =>
+                              setDatosDocente((current) => ({
+                                ...current,
+                                fechaNacimiento: event.target.value,
+                              }))
+                            }
+                            className="form-input"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="telefono-vincular-docente" className="field-label">
+                            Teléfono
+                          </label>
+                          <input
+                            id="telefono-vincular-docente"
+                            value={datosDocente.telefono ?? ""}
+                            onChange={(event) =>
+                              setDatosDocente((current) => ({
+                                ...current,
+                                telefono: event.target.value,
+                              }))
+                            }
+                            className="form-input"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="correo-vincular-docente" className="field-label">
+                            Correo electrónico
+                          </label>
+                          <input
+                            id="correo-vincular-docente"
+                            type="email"
+                            value={datosDocente.correo ?? ""}
+                            onChange={(event) =>
+                              setDatosDocente((current) => ({
+                                ...current,
+                                correo: event.target.value,
+                              }))
+                            }
+                            className="form-input"
+                          />
+                        </div>
+                        <div className="sm:col-span-2">
+                          <label htmlFor="formacion-vincular-docente" className="field-label">
+                            Formación académica
+                          </label>
+                          <input
+                            id="formacion-vincular-docente"
+                            value={datosDocente.formacionAcademica ?? ""}
+                            onChange={(event) =>
+                              setDatosDocente((current) => ({
+                                ...current,
+                                formacionAcademica: event.target.value,
+                              }))
+                            }
+                            className="form-input"
+                          />
+                        </div>
+                        <div className="sm:col-span-2">
+                          <label htmlFor="experiencia-vincular-docente" className="field-label">
+                            Experiencia laboral
+                          </label>
+                          <textarea
+                            id="experiencia-vincular-docente"
+                            value={datosDocente.experienciaLaboral ?? ""}
+                            onChange={(event) =>
+                              setDatosDocente((current) => ({
+                                ...current,
+                                experienciaLaboral: event.target.value,
+                              }))
+                            }
+                            className="form-input"
+                            rows={3}
+                          />
+                        </div>
+                        <label className="flex items-center gap-2 text-sm text-body sm:col-span-2">
+                          <input
+                            type="checkbox"
+                            checked={datosDocente.reportaDiscapacidad}
+                            onChange={(event) =>
+                              setDatosDocente((current) => ({
+                                ...current,
+                                reportaDiscapacidad: event.target.checked,
+                              }))
+                            }
+                            className="h-4 w-4 rounded border-border"
+                          />
+                          Reporta condición de discapacidad
+                        </label>
+                      </div>
+
+                      <fieldset className="space-y-3">
+                        <legend className="field-label">
+                          Documentos faltantes (opcional)
+                        </legend>
+                        <p className="text-xs text-muted">
+                          Solo se cargarán los archivos que selecciones. Si no
+                          cuentas con alguno ahora, podrás agregarlo desde el
+                          expediente del docente.
+                        </p>
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                          {([
+                            ["profilePicture", "Foto de perfil", "image/*"],
+                            ["identityDocument", "Documento de identidad", ".pdf,image/*"],
+                            ["cv", "Hoja de vida (PDF)", ".pdf"],
+                            ...(datosDocente.reportaDiscapacidad
+                              ? [["disabilityCertificate", "Certificado de discapacidad", ".pdf,image/*"]]
+                              : []),
+                          ] as const).map(([field, label, accept]) => (
+                            <label key={field} className="card space-y-2 p-3">
+                              <span className="text-sm font-medium text-body">{label}</span>
+                              <input
+                                type="file"
+                                accept={accept}
+                                onChange={(event) =>
+                                  setArchivosDocente((current) => ({
+                                    ...current,
+                                    [field]: event.target.files?.[0] ?? null,
+                                  }))
+                                }
+                                className="form-input text-xs"
+                              />
+                            </label>
+                          ))}
+                        </div>
+                      </fieldset>
+
+                      <div className="flex justify-end gap-3 border-t border-border pt-4">
+                        <button
+                          type="button"
+                          onClick={cerrarVinculacion}
+                          disabled={vinculandoDocente}
+                          className="outline-btn"
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={vinculandoDocente}
+                          className="primary-btn disabled:opacity-50"
+                        >
+                          {vinculandoDocente ? "Vinculando..." : "Crear perfil docente"}
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                </>
+              ) : (
+                <div className="space-y-4">
+                  <p role="status" className="rounded-lg bg-green-soft p-3 text-sm text-green">
+                    {mensajeVinculacion || "El perfil docente quedó vinculado."}
+                  </p>
+                  <p className="text-sm text-body">
+                    Expediente creado para {docenteVinculado.nombre} {docenteVinculado.apellidos}
+                    {" "}({docenteVinculado.codigo}).
+                  </p>
+                  <div className="flex flex-wrap justify-end gap-3">
+                    <button type="button" onClick={cerrarVinculacion} className="outline-btn">
+                      Cerrar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/docentes/detalle/${docenteVinculado.id}`)}
+                      className="primary-btn"
+                    >
+                      Abrir expediente
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {errorVinculacion && (
+                <p role="alert" className="rounded-lg bg-error-soft p-3 text-sm text-error">
+                  {errorVinculacion}
+                </p>
+              )}
+            </div>
+          </section>
+        </div>
+      )}
     </div>
   );
 }

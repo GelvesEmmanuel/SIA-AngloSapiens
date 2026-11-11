@@ -3,6 +3,8 @@ import { db } from "../config/db/conexion.js";
 import { docentes } from "../config/db/schema.js";
 import {
   registrarDocenteController,
+  buscarUsuarioDisponibleParaDocenciaController,
+  vincularDocenteAUsuarioExistenteController,
   listarDocentesController,
   obtenerDocenteConArchivosPorIdController,
   //actualizarDocenteController,
@@ -18,6 +20,18 @@ import { autorizarRoles, verificarToken  } from "../middlewares/auth.midleware.j
 
 const router = Router();
 const autorizado = autorizarRoles('SUPER_ADMIN', 'COORD_ADMINISTRATIVO', 'COORD_ACADEMICO'); // los roles que tiene permiso ala ruta
+router.get(
+  "/usuarios-existentes/buscar",
+  verificarToken,
+  autorizado,
+  buscarUsuarioDisponibleParaDocenciaController,
+);
+router.post(
+  "/usuarios-existentes/:usuarioId/docente",
+  verificarToken,
+  autorizado,
+  vincularDocenteAUsuarioExistenteController,
+);
 router.get("/listar",verificarToken, autorizado, listarDocentesController); // listar docentes con filtros de estado y busqueda
 router.get("/listar/:id", verificarToken, autorizado, obtenerDocenteConArchivosPorIdController);
 // actualizar datos del docente

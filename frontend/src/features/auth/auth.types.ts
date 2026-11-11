@@ -19,7 +19,7 @@ export interface CambiarContrasenaPayload{
 }
 export interface LoginData {
   token: string;
-  rol: UserRole;
+  roles: UserRole[];
   requiereCambioContrasena: boolean;
 }
 
@@ -36,19 +36,22 @@ export interface CambiarContrasenaResponse {
 
 export interface AuthSession {
   token: string;
-  rol: UserRole;
+  roles: UserRole[];
+  activeRole: UserRole | null;
   requiereCambioContrasena: boolean;
 }
 
 export interface AuthContextValue {
   token: string | null;
-  rol: UserRole | null;
+  roles: UserRole[];
+  activeRole: UserRole | null;
   requiereCambioContrasena: boolean;
 
   isAuthenticated: boolean;
   isInitializing: boolean;
 
   login: (credentials: LoginPayload) => Promise<LoginData>;
+  setActiveRole: (role: UserRole) => void;
 
   cambiarContrasena: (
     payload: CambiarContrasenaPayload

@@ -2,7 +2,7 @@ import {Request,Response, NextFunction} from 'express';
 import jwt from 'jsonwebtoken'
 import {eq} from 'drizzle-orm'
 import {db} from '../config/db.js'
-import { usuarios } from '../config/db/schema.js';
+import { usuarioRoles, usuarios } from '../config/db/schema.js';
 import { AppError } from '../utils/appError.utils.js';
 
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -13,7 +13,7 @@ export interface AuthRequest extends Request{
 
         usuarioId: string;
         username: string;
-        rol: string;
+        roles: string[];
         estado: string;
         versionToken: number;
         requiereCambioContrasena: boolean;
@@ -75,10 +75,16 @@ export const verificarToken = async (req: AuthRequest, res: Response, next: Next
     ));
   }
 
+  // Se consultan los roles vigentes en la BD para aplicar cambios sin depender del JWT emitido antes.
+  const rolesActuales = await db
+    .select({ rol: usuarioRoles.rol })
+    .from(usuarioRoles)
+    .where(eq(usuarioRoles.usuarioId, usuarioActual.usuarioId));
+
   req.user = {
     usuarioId: usuarioActual.usuarioId,
     username: usuarioActual.username,
-    rol: usuarioActual.rol,
+    roles: rolesActuales.map(({ rol }) => rol),
     estado: usuarioActual.estado,
     versionToken: usuarioActual.versionToken,
     requiereCambioContrasena: usuarioActual.requiereCambioContrasena,
@@ -90,7 +96,8 @@ export const verificarToken = async (req: AuthRequest, res: Response, next: Next
 // Middleware para validación de Roles (RBAC - RQF-SEG-02)
 export const autorizarRoles = (...rolesPermitidos: string[]) => {
   return (req: AuthRequest, res: Response, next: NextFunction) => {
-    if (!req.user || !rolesPermitidos.includes(req.user.rol)) {
+    // Basta con que el usuario tenga al menos uno de los roles permitidos por la ruta.
+    if (!req.user || !req.user.roles.some((rol) => rolesPermitidos.includes(rol))) {
       return next(new AppError(
         'No cuenta con los permisos necesarios para realizar esta acción.',
         403,

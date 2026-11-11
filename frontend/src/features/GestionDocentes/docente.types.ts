@@ -1,3 +1,5 @@
+import type { UserRole } from "../auth/auth.types";
+
 // Estados de las cuentas / docentes.
 export type DocenteStatus = "ACTIVO" | "INACTIVO" | "REGISTRADO";
 
@@ -43,6 +45,31 @@ export interface Docente {
 export interface CrearDocenteResponse {
   docenteId: string;
   codigo: string;
+}
+
+export interface UsuarioDisponibleDocencia {
+  usuarioId: string;
+  username: string;
+  documentoIdentidad: string;
+  nombre: string;
+  apellidos: string;
+  roles: UserRole[];
+}
+
+export interface VincularDocentePayload {
+  tipoDocumento: "CC" | "CE" | "TI" | "PAS";
+  fechaNacimiento: string;
+  telefono?: string;
+  correo?: string;
+  formacionAcademica?: string;
+  experienciaLaboral?: string;
+  reportaDiscapacidad: boolean;
+}
+
+export interface VincularDocenteResponse {
+  success: boolean;
+  message: string;
+  data: Docente;
 }
 
 // Parámetros para listar o filtrar docentes (opcional).

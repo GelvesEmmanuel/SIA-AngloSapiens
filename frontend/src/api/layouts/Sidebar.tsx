@@ -46,19 +46,19 @@ const roleLabels: Record<string, string> = {
 };
 
 export function Sidebar({ open, onClose }: SidebarProps) {
-  const { rol } = useAuth();
+  const { activeRole } = useAuth();
 
   const sections = navigationConfig
     .map((section) => ({
       ...section,
       items: section.items.filter((item) =>
-        rol ? item.allowedRoles.includes(rol) : false
+        activeRole ? item.allowedRoles.includes(activeRole) : false
       ),
     }))
     .filter((section) => section.items.length > 0);
 
-  const roleLabel = rol
-    ? roleLabels[rol] ?? "Usuario"
+  const roleLabel = activeRole
+    ? roleLabels[activeRole] ?? activeRole
     : "Usuario";
 
   return (

@@ -1,8 +1,8 @@
 import { eq } from 'drizzle-orm';
 import jwt from 'jsonwebtoken';
 import { db } from '../config/db.js' // Ajusta la ruta a tu instancia de Drizzle según tu estructura
-import { usuarios } from '../config/db/schema.js'; // Ajusta la ruta a tu esquema de usuarios
-import { compararPassword, encriptarPassword, generarUsername } from '../utils/security.utils.js';
+import { usuarioRoles, usuarios } from '../config/db/schema.js';
+import { compararPassword, encriptarPassword } from '../utils/security.utils.js';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -34,11 +34,17 @@ export const AuthService = {
       throw new Error(errorMensajeGenerico);
     }
 
-    // 4. Generación del token JWT incluyendo id, rol, estado y versionToken (RQF-SEG-01 y RQF-SEG-02)
+    // 4. Los roles asociados se incluyen como arreglo en la respuesta y el token.
+    const rolesUsuario = await db
+      .select({ rol: usuarioRoles.rol })
+      .from(usuarioRoles)
+      .where(eq(usuarioRoles.usuarioId, usuario.usuarioId));
+    const roles = rolesUsuario.map(({ rol }) => rol);
+
     const tokenPayload = {
       usuarioId: usuario.usuarioId,
       username: usuario.username,
-      rol: usuario.rol,
+      roles,
       estado: usuario.estado,
       versionToken: usuario.versionToken,
       requiereCambioContrasena: usuario.requiereCambioContrasena,
@@ -49,7 +55,7 @@ export const AuthService = {
     return {
       token,
       requiereCambioContrasena: usuario.requiereCambioContrasena,
-      rol: usuario.rol,
+      roles,
     };
   },
 

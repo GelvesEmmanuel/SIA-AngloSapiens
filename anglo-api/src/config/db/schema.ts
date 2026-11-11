@@ -154,7 +154,6 @@ export const usuarios = pgTable(
       .default(sql`uuid_generate_v4()`),
     username: varchar("username", { length: 50 }).notNull().unique(),
     contrasenaHash: varchar("contraseña_hash", { length: 255 }).notNull(),
-    rol: rolUsuarioEnum("rol").notNull(),
     estado: estadoUsuarioEnum("estado").notNull().default("ACTIVO"),
     requiereCambioContrasena: boolean("requiere_cambio_contraseña")
       .notNull()
@@ -163,7 +162,35 @@ export const usuarios = pgTable(
     createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
   },
-  (table) => [index("idx_usuarios_rol").on(table.rol)],
+
+);
+
+export const usuarioRoles = pgTable(
+  "usuario_roles",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`uuid_generate_v4()`),
+
+    usuarioId: uuid("usuario_id")
+      .notNull()
+      .references(() => usuarios.usuarioId, {
+        onDelete: "cascade",
+      }),
+
+    rol: rolUsuarioEnum("rol").notNull(),
+
+    createdAt: timestamp("created_at", {
+      mode: "date",
+    }).notNull().defaultNow(),
+  },
+  (table) => [
+    unique("uq_usuario_rol").on(
+      table.usuarioId,
+      table.rol
+    ),
+    index("idx_usuario_roles_usuario").on(table.usuarioId),
+  ]
 );
 
 export const auditoriaSistema = pgTable(
@@ -278,11 +305,13 @@ export const docentes = pgTable(
     apellidos: varchar("apellidos", { length: 100 }).notNull(),
     fechaNacimiento: date("fecha_nacimiento", { mode: "string" }).notNull(),
     telefono: varchar("telefono", { length: 20 }),
+    correo: varchar("correo", { length: 255 }),
     formacionAcademica: varchar("formacion_academica", { length: 200 }),
     experienciaLaboral: varchar("experiencia_laboral", {length: 200}),
     reportaDiscapacidad: boolean("reporta_discapacidad").notNull().default(false),
     estado: estadoDocenteEnum("estado").notNull().default("REGISTRADO"),
     motivoInactivacion: text("motivo_inactivacion"),
+    fechaVinculacion: text("fecha_vinculacion"),
     createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
     deletedAt: timestamp("deleted_at", { mode: "date" }),

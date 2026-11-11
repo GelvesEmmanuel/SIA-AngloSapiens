@@ -1,5 +1,11 @@
 import { db } from "../config/db/conexion.js";
-import { docentes , archivos} from "../config/db/schema.js";
+import {
+  archivos,
+  coordinadores,
+  docentes,
+  usuarioRoles,
+  usuarios,
+} from "../config/db/schema.js";
 
 import type {
   InsertDocente,
@@ -76,6 +82,145 @@ export const registrarDocente = async (
   });
 
   return resultado;
+};
+
+export const buscarUsuarioDisponibleParaDocencia = async (
+  documentoIdentidad: string,
+) => {
+  // Solo se permite seleccionar cuentas existentes con perfil de coordinador.
+  const [perfil] = await db
+    .select({
+      usuarioId: usuarios.usuarioId,
+      username: usuarios.username,
+      documentoIdentidad: coordinadores.documentoIdentidad,
+      primerNombre: coordinadores.primerNombre,
+      segundoNombre: coordinadores.segundoNombre,
+      primerApellido: coordinadores.primerApellido,
+      segundoApellido: coordinadores.segundoApellido,
+    })
+    .from(coordinadores)
+    .innerJoin(usuarios, eq(coordinadores.usuarioId, usuarios.usuarioId))
+    .where(eq(coordinadores.documentoIdentidad, documentoIdentidad))
+    .limit(1);
+
+  if (!perfil) {
+    return null;
+  }
+
+  const [docenteExistente] = await db
+    .select({ id: docentes.id })
+    .from(docentes)
+    .where(eq(docentes.usuarioId, perfil.usuarioId))
+    .limit(1);
+
+  if (docenteExistente) {
+    return null;
+  }
+
+  const rolesAsignados = await db
+    .select({ rol: usuarioRoles.rol })
+    .from(usuarioRoles)
+    .where(eq(usuarioRoles.usuarioId, perfil.usuarioId));
+
+  return {
+    usuarioId: perfil.usuarioId,
+    username: perfil.username,
+    documentoIdentidad: perfil.documentoIdentidad,
+    nombre: [perfil.primerNombre, perfil.segundoNombre].filter(Boolean).join(' '),
+    apellidos: [perfil.primerApellido, perfil.segundoApellido].filter(Boolean).join(' '),
+    roles: rolesAsignados.map(({ rol }) => rol),
+  };
+};
+
+export const vincularDocenteAUsuarioExistente = async (
+  usuarioId: string,
+  datos: {
+    tipoDocumento: InsertDocente['tipoDocumento'];
+    fechaNacimiento: string;
+    telefono?: string | null;
+    correo?: string | null;
+    formacionAcademica?: string | null;
+    experienciaLaboral?: string | null;
+    reportaDiscapacidad: boolean;
+  },
+  usuarioAdminId: string,
+) => {
+  const codigo = await generarCodigoDOcente();
+
+  const docenteCreado = await db.transaction(async (tx) => {
+    // Recuperar el perfil base garantiza que nombre y documento no se dupliquen desde el cliente.
+    const [perfil] = await tx
+      .select({
+        usuarioId: usuarios.usuarioId,
+        documentoIdentidad: coordinadores.documentoIdentidad,
+        primerNombre: coordinadores.primerNombre,
+        segundoNombre: coordinadores.segundoNombre,
+        primerApellido: coordinadores.primerApellido,
+        segundoApellido: coordinadores.segundoApellido,
+      })
+      .from(coordinadores)
+      .innerJoin(usuarios, eq(coordinadores.usuarioId, usuarios.usuarioId))
+      .where(eq(usuarios.usuarioId, usuarioId))
+      .limit(1);
+
+    if (!perfil) {
+      throw new Error('USUARIO_COORDINADOR_NO_ENCONTRADO');
+    }
+
+    const docenteExistente = await tx
+      .select({ id: docentes.id })
+      .from(docentes)
+      .where(eq(docentes.usuarioId, usuarioId))
+      .limit(1);
+
+    if (docenteExistente.length > 0) {
+      throw new Error('PERFIL_DOCENTE_YA_EXISTE');
+    }
+
+    // Crear el perfil docente y asociar DOCENTE de forma atómica; conservar roles previos.
+    const [nuevoDocente] = await tx
+      .insert(docentes)
+      .values({
+        usuarioId,
+        codigo,
+        tipoDocumento: datos.tipoDocumento,
+        numeroDocumento: perfil.documentoIdentidad,
+        nombre: [perfil.primerNombre, perfil.segundoNombre].filter(Boolean).join(' '),
+        apellidos: [perfil.primerApellido, perfil.segundoApellido].filter(Boolean).join(' '),
+        fechaNacimiento: datos.fechaNacimiento,
+        telefono: datos.telefono ?? null,
+        correo: datos.correo ?? null,
+        formacionAcademica: datos.formacionAcademica ?? null,
+        experienciaLaboral: datos.experienciaLaboral ?? null,
+        reportaDiscapacidad: datos.reportaDiscapacidad,
+      })
+      .returning();
+
+    await tx
+      .insert(usuarioRoles)
+      .values({ usuarioId, rol: 'DOCENTE' })
+      .onConflictDoNothing({
+        target: [usuarioRoles.usuarioId, usuarioRoles.rol],
+      });
+
+    return nuevoDocente;
+  });
+
+  await registrarAuditoria({
+    usuarioId: usuarioAdminId,
+    tablaAfectada: 'docentes',
+    registroId: docenteCreado.id,
+    accion: 'CREATE',
+    datosNuevos: {
+      usuarioId,
+      codigo: docenteCreado.codigo,
+      numeroDocumento: docenteCreado.numeroDocumento,
+      rolAsignado: 'DOCENTE',
+    },
+    motivo: 'Vinculación de perfil docente a una cuenta de coordinador existente',
+  });
+
+  return docenteCreado;
 };
 
 export const generarCodigoDOcente = async (): Promise<string> => {

@@ -12,10 +12,38 @@ export const crearDocenteSchema = z.object({
   apellidos: z.string().trim().min(2, 'Los apellidos son obligatorios'),
   fechaNacimiento: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato de fecha inválido (YYYY-MM-DD)'),
   telefono: z.string().trim().optional().nullable(),
+  correo: z.preprocess(
+    (value) => value === '' ? null : value,
+    z.string().trim().email('El correo no tiene un formato válido').optional().nullable(),
+  ),
   formacionAcademica: z.string().trim().optional().nullable(),
+  experienciaLaboral: z.string().trim().optional().nullable(),
   reportaDiscapacidad: z.preprocess((val) => {
     if (val === 'true' || val === true) return true;
     if (val === 'false' || val === false) return false;
     return val;
 }, z.boolean().default(false)),
+});
+
+export const buscarUsuarioDocenteSchema = z.object({
+  documentoIdentidad: z.string().trim().min(5, 'El documento de identidad es obligatorio'),
+});
+
+export const vincularDocenteAUsuarioSchema = z.object({
+  tipoDocumento: z.enum(['CC', 'CE', 'TI', 'PAS'], {
+    message: 'Tipo de documento no válido',
+  }),
+  fechaNacimiento: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato de fecha inválido (YYYY-MM-DD)'),
+  telefono: z.string().trim().optional().nullable(),
+  correo: z.preprocess(
+    (value) => value === '' ? null : value,
+    z.string().trim().email('El correo no tiene un formato válido').optional().nullable(),
+  ),
+  formacionAcademica: z.string().trim().optional().nullable(),
+  experienciaLaboral: z.string().trim().optional().nullable(),
+  reportaDiscapacidad: z.preprocess((val) => {
+    if (val === 'true' || val === true) return true;
+    if (val === 'false' || val === false) return false;
+    return val;
+  }, z.boolean().default(false)),
 });

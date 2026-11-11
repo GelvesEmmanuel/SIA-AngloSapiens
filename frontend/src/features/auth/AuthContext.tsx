@@ -60,7 +60,8 @@ export function AuthProvider({
 
       const newSession: AuthSession = {
         token: response.datos.token,
-        rol: response.datos.rol,
+        roles: response.datos.roles,
+        activeRole: response.datos.roles[0] ?? null,
         requiereCambioContrasena:
           response.datos.requiereCambioContrasena,
       };
@@ -72,6 +73,18 @@ export function AuthProvider({
     },
     []
   );
+
+  const setActiveRole = useCallback((role: AuthSession["roles"][number]) => {
+    setSession((current) => {
+      if (!current || !current.roles.includes(role)) {
+        return current;
+      }
+
+      const updatedSession = { ...current, activeRole: role };
+      authStorage.saveSession(updatedSession);
+      return updatedSession;
+    });
+  }, []);
 
   // Cambiar la contraseña e invalidar la sesión local.
   const cambiarContrasena = useCallback(
@@ -124,7 +137,8 @@ export function AuthProvider({
 
   const value: AuthContextValue = {
     token: session?.token ?? null,
-    rol: session?.rol ?? null,
+    roles: session?.roles ?? [],
+    activeRole: session?.activeRole ?? null,
 
     requiereCambioContrasena:
       session?.requiereCambioContrasena ?? false,
@@ -133,6 +147,7 @@ export function AuthProvider({
     isInitializing,
 
     login,
+    setActiveRole,
     cambiarContrasena,
     logout,
   };

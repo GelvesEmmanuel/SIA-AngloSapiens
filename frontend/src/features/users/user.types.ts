@@ -8,7 +8,7 @@ export type UserStatus = "ACTIVO" | "INACTIVO";
 export interface Usuario {
   usuarioId: string;
   username: string;
-  rol: UserRole;
+  roles: UserRole[];
   estado: UserStatus;
   requiereCambioContrasena: boolean;
   createAt: string;
@@ -30,9 +30,60 @@ export interface CrearUsuarioCoordinadorResponse {
   mensaje: {
     usuarioId: string;
     username: string;
-    rol: "COORD_ACADEMICO" | "COORD_ADMINISTRATIVO";
+    roles: UserRole[];
     estado: UserStatus;
     mensaje: string;
+  };
+}
+
+export interface UsuarioDetalleResponse {
+  success: boolean;
+  data: Usuario;
+}
+
+export interface AsignarRolUsuarioPayload {
+  rol: UserRole;
+}
+
+export interface AsignarRolUsuarioResponse {
+  success: boolean;
+  message: string;
+  data: {
+    usuarioId: string;
+    roles: UserRole[];
+  };
+}
+
+export interface UsuarioParaCoordinacion {
+  usuarioId: string;
+  username: string;
+  documentoIdentidad: string;
+  nombre: string;
+  apellidos: string;
+  origen: "DOCENTE" | "ESTUDIANTE" | "COORDINADOR";
+  roles: UserRole[];
+  rolesCoordinador: UserRole[];
+}
+
+export interface BuscarUsuarioParaCoordinacionResponse {
+  success: boolean;
+  message: string;
+  data: UsuarioParaCoordinacion;
+}
+
+export interface ConvertirUsuarioEnCoordinadorPayload {
+  documentoIdentidad: string;
+  rol: "COORD_ACADEMICO" | "COORD_ADMINISTRATIVO";
+}
+
+export interface ConvertirUsuarioEnCoordinadorResponse {
+  success: boolean;
+  message: string;
+  data: {
+    usuarioId: string;
+    username: string;
+    documentoIdentidad: string;
+    roles: UserRole[];
   };
 }
 

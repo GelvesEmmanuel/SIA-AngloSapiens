@@ -23,7 +23,7 @@ const roleLabels: Record<string, string> = {
 };
 
 export function Topbar({ onMenuClick }: TopbarProps) {
-  const { rol, logout } = useAuth();
+  const { roles, activeRole, setActiveRole, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -33,8 +33,8 @@ export function Topbar({ onMenuClick }: TopbarProps) {
 
   const pageTitle = currentItem?.label ?? "Inicio";
 
-  const roleLabel = rol
-    ? roleLabels[rol] ?? "Usuario"
+  const roleLabel = activeRole
+    ? roleLabels[activeRole] ?? activeRole
     : "Usuario";
 
   const handleLogout = async () => {
@@ -78,14 +78,36 @@ export function Topbar({ onMenuClick }: TopbarProps) {
           <UserRound size={18} />
         </div>
 
-        <div className="hidden text-right sm:block">
-          <p className="text-xs font-bold text-navy">
+        <div className="min-w-0 text-right">
+          <p className="hidden text-xs font-bold text-navy sm:block">
             Usuario autenticado
           </p>
 
-          <p className="text-[10px] text-muted">
-            {roleLabel}
-          </p>
+          {roles.length > 1 ? (
+            <label className="sr-only" htmlFor="active-role">
+              Perfil activo
+            </label>
+          ) : null}
+          {roles.length > 1 ? (
+            <select
+              id="active-role"
+              aria-label="Seleccionar perfil activo"
+              value={activeRole ?? ""}
+              onChange={(event) => {
+                const nextRole = roles.find((role) => role === event.target.value);
+                if (nextRole) setActiveRole(nextRole);
+              }}
+              className="max-w-32 cursor-pointer truncate border-0 bg-transparent text-[10px] text-muted outline-none sm:max-w-48"
+            >
+              {roles.map((role) => (
+                <option key={role} value={role}>
+                  {roleLabels[role] ?? role}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <p className="text-[10px] text-muted">{roleLabel}</p>
+          )}
         </div>
 
         <div className="hidden h-8 w-px bg-border sm:block" />

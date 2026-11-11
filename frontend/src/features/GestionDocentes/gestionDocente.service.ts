@@ -1,5 +1,15 @@
 import api from "../../api/axios";
-import type {Docente,CrearDocentePayload,CrearDocenteResponse,ListarDocentesParams, ApiResponse,CambiarEstadoDocentePayload } from "./docente.types"
+import type {
+  Docente,
+  CrearDocentePayload,
+  CrearDocenteResponse,
+  ListarDocentesParams,
+  ApiResponse,
+  CambiarEstadoDocentePayload,
+  UsuarioDisponibleDocencia,
+  VincularDocentePayload,
+  VincularDocenteResponse,
+} from "./docente.types"
 const BASE_URL = "/docentes";
 // 1. Listar docentes con filtros opcionales
 export const listarDocentes = async(
@@ -34,6 +44,29 @@ export const listarDocentes = async(
       },
     }
   );
+  return response.data;
+};
+
+export const buscarUsuarioDisponibleParaDocencia = async (
+  documentoIdentidad: string
+): Promise<ApiResponse<UsuarioDisponibleDocencia>> => {
+  const response = await api.get<ApiResponse<UsuarioDisponibleDocencia>>(
+    `${BASE_URL}/usuarios-existentes/buscar`,
+    { params: { documentoIdentidad } }
+  );
+
+  return response.data;
+};
+
+export const vincularDocenteAUsuarioExistente = async (
+  usuarioId: string,
+  payload: VincularDocentePayload
+): Promise<VincularDocenteResponse> => {
+  const response = await api.post<VincularDocenteResponse>(
+    `${BASE_URL}/usuarios-existentes/${usuarioId}/docente`,
+    payload
+  );
+
   return response.data;
 };
 // 4 cmabiar estado del docente

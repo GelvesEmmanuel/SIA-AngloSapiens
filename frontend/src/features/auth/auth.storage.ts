@@ -1,7 +1,18 @@
 import type { AuthSession } from "./auth.types";
-import { USER_ROLES } from "./auth.types";
+import { USER_ROLES, type UserRole } from "./auth.types";
 
 const AUTH_STORAGE_KEY = "sia.auth.session";
+
+function isUserRole(value: unknown): value is UserRole {
+  return (
+    typeof value === "string" &&
+    (USER_ROLES as readonly string[]).includes(value)
+  );
+}
+
+function isUserRoleArray(value: unknown): value is UserRole[] {
+  return Array.isArray(value) && value.every(isUserRole);
+}
 
 export const authStorage = {
   getSession(): AuthSession | null {
@@ -24,22 +35,30 @@ export const authStorage = {
 
       const data = parsed as Record<string, unknown>;
 
-      const validRole =
-        typeof data.rol === "string" &&
-        (USER_ROLES as readonly string[]).includes(data.rol);
+      let roles: unknown = data.roles;
+      if (!isUserRoleArray(roles) && isUserRole(data.rol)) {
+        roles = [data.rol];
+      }
 
       if (
         typeof data.token !== "string" ||
-        !validRole ||
+        !isUserRoleArray(roles) ||
         typeof data.requiereCambioContrasena !== "boolean"
       ) {
         sessionStorage.removeItem(AUTH_STORAGE_KEY);
         return null;
       }
 
+      const validRoles = roles as UserRole[];
+      const activeRole = isUserRole(data.activeRole) &&
+          validRoles.includes(data.activeRole)
+        ? data.activeRole
+        : validRoles[0] ?? null;
+
       return {
         token: data.token,
-        rol: data.rol as AuthSession["rol"],
+        roles: validRoles,
+        activeRole,
         requiereCambioContrasena:
           data.requiereCambioContrasena,
       };

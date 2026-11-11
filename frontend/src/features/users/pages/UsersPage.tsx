@@ -4,6 +4,11 @@ import type { UserRole } from "../../auth/auth.types";
 import { useState } from "react";
 import type { Usuario, CrearUsuarioCoordinadorPayload } from "../user.types";
 import type { FormEvent } from "react";
+import {
+  buscarUsuarioParaCoordinacion,
+  convertirUsuarioEnCoordinador,
+} from "../user.service";
+import { extraerMensajeError } from "../../../api/apiError";
 
 const roles: { value: UserRole | ""; label: string }[] = [
   { value: "", label: "Todos los roles" },
@@ -55,6 +60,18 @@ export default function UsersPage() {
 
 // estado del formulario de crear
 const [mostrarFormulario, setMostrarFormulario] = useState(false);
+const [modoCoordinador, setModoCoordinador] = useState<"nuevo" | "existente">("nuevo");
+const [documentoExistente, setDocumentoExistente] = useState("");
+const [usuarioExistente, setUsuarioExistente] = useState<Awaited<
+  ReturnType<typeof buscarUsuarioParaCoordinacion>
+>["data"] | null>(null);
+const [rolExistente, setRolExistente] = useState<
+  "COORD_ACADEMICO" | "COORD_ADMINISTRATIVO"
+>("COORD_ACADEMICO");
+const [buscandoExistente, setBuscandoExistente] = useState(false);
+const [convirtiendoExistente, setConvirtiendoExistente] = useState(false);
+const [errorExistente, setErrorExistente] = useState("");
+const [mensajeExistente, setMensajeExistente] = useState("");
 
 const [formulario, setFormulario] =
   useState<CrearUsuarioCoordinadorPayload>({
@@ -93,9 +110,14 @@ const actualizarCampo = (
 };
 
 const cerrarFormulario = () => {
-  if (isCreating) return;
+  if (isCreating || convirtiendoExistente) return;
 
   setMostrarFormulario(false);
+  setModoCoordinador("nuevo");
+  setDocumentoExistente("");
+  setUsuarioExistente(null);
+  setErrorExistente("");
+  setMensajeExistente("");
   setFormulario({
     primerNombre: "",
     segundoNombre: "",
@@ -106,6 +128,53 @@ const cerrarFormulario = () => {
     rol: "COORD_ACADEMICO",
   });
   limpiarMensajes();
+};
+
+const buscarUsuarioExistente = async (event: FormEvent<HTMLFormElement>) => {
+  event.preventDefault();
+  setErrorExistente("");
+  setMensajeExistente("");
+  setUsuarioExistente(null);
+  setBuscandoExistente(true);
+
+  try {
+    const response = await buscarUsuarioParaCoordinacion(documentoExistente.trim());
+    setUsuarioExistente(response.data);
+  } catch (error: unknown) {
+    setErrorExistente(extraerMensajeError(error));
+  } finally {
+    setBuscandoExistente(false);
+  }
+};
+
+const convertirUsuarioExistente = async (event: FormEvent<HTMLFormElement>) => {
+  event.preventDefault();
+  if (!usuarioExistente) return;
+
+  setErrorExistente("");
+  setMensajeExistente("");
+  setConvirtiendoExistente(true);
+
+  try {
+    const response = await convertirUsuarioEnCoordinador({
+      documentoIdentidad: usuarioExistente.documentoIdentidad,
+      rol: rolExistente,
+    });
+    setMensajeExistente(response.message);
+    setUsuarioExistente({
+      ...usuarioExistente,
+      roles: response.data.roles,
+      rolesCoordinador: response.data.roles.filter(
+        (role): role is "COORD_ACADEMICO" | "COORD_ADMINISTRATIVO" =>
+          role === "COORD_ACADEMICO" || role === "COORD_ADMINISTRATIVO",
+      ),
+    });
+    recargarUsuarios();
+  } catch (error: unknown) {
+    setErrorExistente(extraerMensajeError(error));
+  } finally {
+    setConvirtiendoExistente(false);
+  }
 };
 
 const enviarFormulario = async (event: FormEvent<HTMLFormElement>) => {
@@ -392,9 +461,13 @@ const confirmarAccion = async () => {
                     </td>
 
                     <td className="px-5 py-4">
-                      <span className="badge badge-navy">
-                        {roleLabels[usuario.rol]}
-                      </span>
+                      <div className="flex flex-wrap gap-1">
+                        {usuario.roles.map((role) => (
+                          <span key={role} className="badge badge-navy">
+                            {roleLabels[role]}
+                          </span>
+                        ))}
+                      </div>
                     </td>
 
                     <td className="px-5 py-4">
@@ -537,23 +610,51 @@ const confirmarAccion = async () => {
       <div className="flex items-center justify-between border-b border-border p-5">
         <div>
           <h2 className="text-lg font-bold text-navy">
-            Registrar coordinador
+            {modoCoordinador === "nuevo"
+              ? "Registrar coordinador"
+              : "Vincular docente como coordinador"}
           </h2>
           <p className="mt-1 text-sm text-muted">
-            Completa los datos personales y asigna el tipo de coordinador.
+            {modoCoordinador === "nuevo"
+              ? "Completa los datos personales y asigna el tipo de coordinador."
+              : "Agrega un rol de coordinador a una cuenta docente existente."}
           </p>
         </div>
 
         <button
           type="button"
           onClick={cerrarFormulario}
-          disabled={isCreating}
+          disabled={isCreating || convirtiendoExistente}
           className="text-xl text-muted hover:text-red disabled:opacity-50"
         >
           ×
         </button>
       </div>
 
+      <div className="grid grid-cols-2 gap-2 px-5 pt-5">
+        <button
+          type="button"
+          onClick={() => {
+            setModoCoordinador("nuevo");
+            setErrorExistente("");
+          }}
+          className={modoCoordinador === "nuevo" ? "primary-btn" : "outline-btn"}
+        >
+          Crear cuenta nueva
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setModoCoordinador("existente");
+            setErrorExistente("");
+          }}
+          className={modoCoordinador === "existente" ? "primary-btn" : "outline-btn"}
+        >
+          Vincular docente existente
+        </button>
+      </div>
+
+      {modoCoordinador === "nuevo" ? (
       <form onSubmit={enviarFormulario} className="space-y-5 p-5">
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -702,6 +803,105 @@ const confirmarAccion = async () => {
         </div>
 
       </form>
+      ) : (
+        <div className="space-y-5 p-5">
+          <p className="text-sm text-muted">
+            Busca un docente por su documento y agrega un rol de coordinador a
+            la cuenta existente. Sus datos y roles actuales se conservarán.
+          </p>
+
+          <form onSubmit={buscarUsuarioExistente} className="space-y-3">
+            <label htmlFor="documento-docente-existente" className="field-label">
+              Documento de identidad del docente
+            </label>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <input
+                id="documento-docente-existente"
+                value={documentoExistente}
+                onChange={(event) => setDocumentoExistente(event.target.value)}
+                className="form-input flex-1"
+                minLength={5}
+                required
+              />
+              <button
+                type="submit"
+                disabled={buscandoExistente || convirtiendoExistente}
+                className="outline-btn disabled:opacity-50"
+              >
+                {buscandoExistente ? "Buscando..." : "Buscar docente"}
+              </button>
+            </div>
+          </form>
+
+          {usuarioExistente && (
+            <form onSubmit={convertirUsuarioExistente} className="space-y-4">
+              <div className="rounded-lg border border-border bg-surface-muted p-4">
+                <p className="font-semibold text-heading">
+                  {usuarioExistente.nombre} {usuarioExistente.apellidos}
+                </p>
+                <p className="mt-1 text-sm text-muted">
+                  {usuarioExistente.documentoIdentidad} · Usuario: {usuarioExistente.username}
+                </p>
+                <p className="mt-2 text-xs text-muted">
+                  Roles actuales: {usuarioExistente.roles.map((role) => roleLabels[role]).join(", ")}
+                </p>
+              </div>
+
+              <div>
+                <label htmlFor="rol-coordinador-existente" className="field-label">
+                  Rol de coordinador que se agregará
+                </label>
+                <select
+                  id="rol-coordinador-existente"
+                  value={rolExistente}
+                  onChange={(event) =>
+                    setRolExistente(event.target.value as typeof rolExistente)
+                  }
+                  className="form-input"
+                >
+                  <option value="COORD_ACADEMICO">Coordinador académico</option>
+                  <option value="COORD_ADMINISTRATIVO">Coordinador administrativo</option>
+                </select>
+              </div>
+
+              <div className="flex justify-end gap-3 border-t border-border pt-4">
+                <button
+                  type="button"
+                  onClick={cerrarFormulario}
+                  disabled={convirtiendoExistente}
+                  className="outline-btn"
+                >
+                  Cerrar
+                </button>
+                <button
+                  type="submit"
+                  disabled={convirtiendoExistente}
+                  className="primary-btn disabled:opacity-50"
+                >
+                  {convirtiendoExistente ? "Agregando rol..." : "Agregar rol de coordinador"}
+                </button>
+              </div>
+            </form>
+          )}
+
+          {errorExistente && (
+            <p role="alert" className="rounded-lg bg-error-soft p-3 text-sm text-error">
+              {errorExistente}
+            </p>
+          )}
+          {mensajeExistente && (
+            <p role="status" className="rounded-lg bg-green-soft p-3 text-sm text-green">
+              {mensajeExistente}
+            </p>
+          )}
+
+          <div className="flex justify-end border-t border-border pt-4">
+            <button type="button" onClick={cerrarFormulario} className="outline-btn">
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   </div>
 )}

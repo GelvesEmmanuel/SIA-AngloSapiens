@@ -1,5 +1,5 @@
 import {db} from '../config/db.js'
-import { usuarios } from '../config/db/schema.js'
+import { usuarioRoles, usuarios } from '../config/db/schema.js'
 import {generarUsername, encriptarPassword} from '../utils/security.utils.js'
 
 // aqui centralizo la creacion del obgeto usuario para que cualruiqe modulo docente o estudiante lo reutilize , solo pasandole datos basicos
@@ -40,18 +40,23 @@ export const crearUsuarioBaseParaModulo = async (
   // 4. Regla de negocio para el cambio obligatorio
   const requiereCambioContrasena = datos.rol === 'DOCENTE';
 
-  // 5. Insertar en la tabla centralizada de usuarios
+  // 5. Crear la cuenta sin rol en usuarios y guardar su rol inicial en la tabla intermedia.
   const [nuevoUsuario] = await tx
     .insert(usuarios)
     .values({
       username,
       contrasenaHash,
-      rol: datos.rol,
       estado: 'ACTIVO',
       requiereCambioContrasena,
       versionToken: 1,
     })
     .returning();
+
+  // 6. Ambas escrituras usan la transacción del módulo para evitar cuentas sin rol.
+  await tx.insert(usuarioRoles).values({
+    usuarioId: nuevoUsuario.usuarioId,
+    rol: datos.rol,
+  });
 
   return nuevoUsuario;
 };

@@ -9,12 +9,9 @@ import {
 } from "./permissions.config";
 
 export function usePermissions() {
-  const { rol } = useAuth();
+  const { activeRole } = useAuth();
 
-  // Obtener permisos correspondientes al rol.
-  const permissions = rol
-    ? permissionsByRole[rol]
-    : [];
+  const permissions = activeRole ? permissionsByRole[activeRole] : [];
 
   // Comprobar un permiso específico.
   const can = (permission: Permission): boolean => {
@@ -36,7 +33,7 @@ export function usePermissions() {
   };
 
   return {
-    rol,
+    activeRole,
     permissions,
     can,
     canAny,

@@ -1,16 +1,24 @@
 // se maneja la peticion http extrayendo los datos del req.body y llamndo el servicio desede docente.service.ts
 import { Request, Response, NextFunction } from "express";
+import { ZodError } from "zod";
+import { AuthRequest } from "../middlewares/auth.midleware.js";
 import {
   registrarDocente,
   obtenerDocentes,
   generarCodigoDOcente,
   obtenerDocenteConArchivosPorId,
+  buscarUsuarioDisponibleParaDocencia,
+  vincularDocenteAUsuarioExistente,
   //actualizarDocente,
   cambiarEstadoDocente,
   actualizarDatosDocente,
   actualizarDocumentosDocenteService
 
 } from "../services/docente.service.js";
+import {
+  buscarUsuarioDocenteSchema,
+  vincularDocenteAUsuarioSchema,
+} from "../validators/docente.validator.js";
 import {subirArchivo} from "../services/storage.service.js";
 import {guardarOActualizarArchivosEnBD} from "../services/archivos.service.js";
 import type { InsertDocente } from "../types/docentes.types.js";
@@ -55,6 +63,22 @@ const mapDocenteError = (
     return new AppError("El docente especificado no existe.", 404, "DOCENTE_NO_ENCONTRADO");
   }
 
+  if (message === "USUARIO_COORDINADOR_NO_ENCONTRADO") {
+    return new AppError(
+      "No se encontró una cuenta vinculada a un perfil de coordinador.",
+      404,
+      "USUARIO_NO_DISPONIBLE",
+    );
+  }
+
+  if (message === "PERFIL_DOCENTE_YA_EXISTE") {
+    return new AppError(
+      "Esta cuenta ya tiene un perfil docente asociado.",
+      409,
+      "PERFIL_DOCENTE_DUPLICADO",
+    );
+  }
+
   if (message === "MOTIVO_INACTIVACION_REQUERIDO") {
     return new AppError(
       "Es obligatorio ingresar un motivo para inactivar al docente.",
@@ -65,6 +89,81 @@ const mapDocenteError = (
   }
 
   return error;
+};
+
+const validationError = (error: ZodError) =>
+  new AppError(
+    "Error de validación en los datos de entrada.",
+    400,
+    "VALIDATION_ERROR",
+    error.issues.map((issue) => ({
+      field: issue.path.join(".") || "general",
+      message: issue.message,
+    })),
+  );
+
+export const buscarUsuarioDisponibleParaDocenciaController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { documentoIdentidad } = buscarUsuarioDocenteSchema.parse(req.query);
+    const perfil = await buscarUsuarioDisponibleParaDocencia(documentoIdentidad);
+
+    if (!perfil) {
+      throw new AppError(
+        "No se encontró un perfil de coordinador disponible con ese documento.",
+        404,
+        "USUARIO_NO_DISPONIBLE",
+      );
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Perfil disponible para vincular como docente.",
+      data: perfil,
+    });
+  } catch (error: unknown) {
+    return next(error instanceof ZodError ? validationError(error) : mapDocenteError(error));
+  }
+};
+
+export const vincularDocenteAUsuarioExistenteController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const usuarioId = Array.isArray(req.params.usuarioId)
+      ? req.params.usuarioId[0]
+      : req.params.usuarioId;
+    if (!usuarioId) {
+      throw new AppError("El ID del usuario es obligatorio.", 400, "ID_REQUERIDO", [
+        { field: "usuarioId", message: "Este parámetro es obligatorio." },
+      ]);
+    }
+
+    const usuarioAdminId = req.user?.usuarioId;
+    if (!usuarioAdminId) {
+      throw new AppError("No autorizado.", 401, "NO_AUTORIZADO");
+    }
+
+    const datos = vincularDocenteAUsuarioSchema.parse(req.body);
+    const docente = await vincularDocenteAUsuarioExistente(
+      usuarioId,
+      datos,
+      usuarioAdminId,
+    );
+
+    return res.status(201).json({
+      success: true,
+      message: "Perfil docente asociado a la cuenta existente y rol DOCENTE asignado.",
+      data: docente,
+    });
+  } catch (error: unknown) {
+    return next(error instanceof ZodError ? validationError(error) : mapDocenteError(error, true));
+  }
 };
 
 export const registrarDocenteController = async (
@@ -96,6 +195,7 @@ export const registrarDocenteController = async (
       fechaNacimiento: req.body.fechaNacimiento,
 
       telefono: req.body.telefono ?? null,
+      correo: req.body.correo ?? null,
       formacionAcademica: req.body.formacionAcademica ?? null,
       experienciaLaboral: req.body.experienciaLaboral ?? null,
 
