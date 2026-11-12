@@ -33,6 +33,7 @@ export interface Docente {
   telefono: string | null;
   formacionAcademica: string | null;
   experienciaLaboral: string | null;
+  fechaVinculacion: string | null; 
   reportaDiscapacidad: boolean;
   estado: DocenteStatus;
   motivoInactivacion: string | null;

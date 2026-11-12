@@ -8,6 +8,7 @@ import archivoRoutes from './routes/archivo.routes.js'; // Asegúrate de importa
 import authRoutes from './routes/auth.routes.js'
 import adminRoutes from './routes/admin.routes.js'
 import estudiantesRoutes from './routes/estudiantes.routes.js'
+import cursosRoutes from './routes/cursos.route.js'
 import { errorHandler } from './middlewares/errorHandler.middleware.js';
 import { estudiantes } from './config/db/schema.js';
 const app = express();
@@ -25,5 +26,6 @@ app.use('/api', archivoRoutes); // Asegúrate de importar archivoRoutes desde el
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/GestionEstudiante', estudiantesRoutes)
+app.use('/api/cursos', cursosRoutes)
 app.use(errorHandler);
 export default app; // Exportas la instancia de express

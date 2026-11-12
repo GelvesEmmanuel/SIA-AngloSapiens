@@ -32,7 +32,24 @@ const [formData, setFormData] = useState({
   formacionAcademica: "",
   experienciaLaboral: "",
   reportaDiscapacidad: false,
-});
+  fechaVinculacion: "",
+}); 
+
+const abrirEdicion = () => {
+  if (!isEditing && docente) {
+    setFormData({
+      nombre: docente.nombre || "",
+      apellidos: docente.apellidos || "", // asegúrate que esté en formato YYYY-MM-DD
+      telefono: docente.telefono || "",
+      formacionAcademica: docente.formacionAcademica || "",
+      experienciaLaboral: docente.experienciaLaboral || "",
+      fechaVinculacion: docente.fechaVinculacion || "",
+      reportaDiscapacidad: Boolean(docente.reportaDiscapacidad),
+    });
+  }
+  setIsEditing(!isEditing);
+};
+
 
 const [motivoInactivacion, setMotivoInactivacion] = useState("");
   // Cargar expediente del docente
@@ -209,8 +226,15 @@ const confirmarInactivacion = async () => {
 const handleGuardarDatos = async (e: any) => {
   e.preventDefault();
   if (!id) return;
+  // Filtramos las propiedades que sean strings vacíos para que el PATCH no las sobrescriba
+  const payload = Object.fromEntries(
+    Object.entries(formData).filter(([_, value]) => {
+      if (typeof value === "string") return value.trim() !== "";
+      return value !== undefined && value !== null;
+    })
+  );
   try {
-    await ejecutarActualizarDatos(id, formData);
+    await ejecutarActualizarDatos(id, payload);
     setIsEditing(false);
     // Recargamos el docente para ver los cambios reflejados
     const actualizado = await obtenerDetalleDocente(id);
@@ -400,6 +424,14 @@ const handleActualizarDocumentoSubmit = async (e: any) => {
                 {docente.experienciaLaboral || "No especificada"}
               </p>
             </div>
+            <div>
+              <p className="text-xs text-muted font-medium">
+                Fecha de vinculación del docente
+              </p>
+              <p className="text-sm text-body">
+                {docente.fechaVinculacion || "No especificada"}
+              </p>
+            </div>
           </div>
 
           {/* Información adicional y documentos */}
@@ -488,7 +520,7 @@ const handleActualizarDocumentoSubmit = async (e: any) => {
     <h3 className="text-lg font-semibold text-heading">Gestión de Información Personal</h3>
     <button
       type="button"
-      onClick={() => setIsEditing(!isEditing)}
+      onClick={abrirEdicion}
       className="outline-btn text-xs"
     >
       {isEditing ? "Cancelar Edición" : "✏️ Editar Información"}
@@ -542,6 +574,15 @@ const handleActualizarDocumentoSubmit = async (e: any) => {
             type="text"
             value={formData.experienciaLaboral}
             onChange={(e) => setFormData({ ...formData, experienciaLaboral: e.target.value })}
+            className="form-input"
+          />
+        </div>
+         <div>
+          <label className="field-label">Fecha de vinculación</label>
+          <input
+            type="text"
+            value={formData.fechaVinculacion}
+            onChange={(e) => setFormData({ ...formData, fechaVinculacion: e.target.value })}
             className="form-input"
           />
         </div>

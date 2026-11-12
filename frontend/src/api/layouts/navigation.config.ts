@@ -88,8 +88,7 @@ export const navigationConfig: NavigationSection[] = [
         allowedRoles: [
           "SUPER_ADMIN",
           "COORD_ACADEMICO",
-          "DOCENTE",
-          "ESTUDIANTE",
+          "COORD_ADMINISTRATIVO",
         ],
       },
       {

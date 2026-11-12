@@ -198,6 +198,7 @@ export const registrarDocenteController = async (
       correo: req.body.correo ?? null,
       formacionAcademica: req.body.formacionAcademica ?? null,
       experienciaLaboral: req.body.experienciaLaboral ?? null,
+      fechaVinculacion: req.body.fechaVinculacion ?? null,
 
       reportaDiscapacidad: req.body.reportaDiscapacidad ?? false,
     };
@@ -408,6 +409,7 @@ export const actualizarDatosDocenteController = async (
       formacionAcademica: req.body.formacionAcademica,
       experienciaLaboral: req.body.experienciaLaboral,
       reportaDiscapacidad: req.body.reportaDiscapacidad,
+      fechaVinculacion: req.body.fechaVinculacion,
       
     };
 

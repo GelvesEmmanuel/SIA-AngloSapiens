@@ -1,5 +1,5 @@
 import { Interface } from "readline";
-import { estudiantes } from "../config/db/schema.js";
+import { estudiantes, contactoEstudiante } from "../config/db/schema.js";
 
 import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 
@@ -26,4 +26,12 @@ export type EstudianteConExpediente = typeof estudiantes.$inferSelect & {
     url: string | null;
     estado: "VIGENTE" | "HISTORICO";
   }[];
+  contactos: (typeof contactoEstudiante.$inferSelect)[];
 };
+// cambiar estado de docente
+export interface ParamsCambioEstado {
+  estudianteId: string;
+  nuevoEstado: EstadoEstudiante;
+  motivoInactivacion?: string;
+  usuarioAdminId: string;
+}

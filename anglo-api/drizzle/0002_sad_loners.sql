@@ -1,0 +1,2 @@
+ALTER TABLE "estudiantes" ADD COLUMN "terminos_y_condiciones" boolean DEFAULT true NOT NULL;--> statement-breakpoint
+ALTER TABLE "estudiantes" ADD COLUMN "consentimiento_de_uso_de_imagen" boolean DEFAULT true NOT NULL;

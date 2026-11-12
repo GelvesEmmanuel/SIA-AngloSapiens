@@ -256,6 +256,8 @@ export const estudiantes = pgTable(
     gradoAcademico: varchar("grado_academico", { length: 100 }),
     institucionEducativa: varchar("institucion_educativa", { length: 150 }),
     reportaDiscapacidad: boolean("reporta_discapacidad").notNull().default(false),
+    terminosyCondiciones: boolean("terminos_y_condiciones").notNull().default(true),
+    consentimientoUsoImagen: boolean("consentimiento_de_uso_de_imagen").notNull().default(true),
     estado: estadoEstudianteEnum("estado").notNull().default("PRE_REGISTRADO"),
     motivoInactivacion: text("motivo_inactivacion"),
     createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),

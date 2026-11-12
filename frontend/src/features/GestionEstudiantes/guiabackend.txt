@@ -1,181 +1,130 @@
-export const preRegistrarEstudianteController = async (
+//ruta 
+router.patch("/contactos/:id", verificarToken, autorizado, actualizarDatosContactoEstudianteController)
+
+// controller de actualoizar contactos
+export const actualizarDatosContactoEstudianteController = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
-  const uploadFilesPaths: string[] = []; 
-  let requestSucceeded = false;
-
   try {
     const usuarioAdminId = (req as any).user?.usuarioId;
+    const params = req.params as Record<string, string>;
+    const estudianteId = params.id;
+
     if (!usuarioAdminId) {
-      throw new AppError("Falta información del usuario en el token.", 401, "NO_AUTORIZADO");
-    }
-
-    // ==========================================
-    // PASO 1: VALIDAR DATOS Y CONTACTOS PRIMERO
-    // ==========================================
-    let contactos: InsertContacto[] = [];
-    try {
-      if (req.body.contactos) {
-        contactos = typeof req.body.contactos === 'string' 
-          ? JSON.parse(req.body.contactos) 
-          : req.body.contactos;
-      }
-    } catch (e) {
-      throw new AppError("El formato de los contactos/acudientes no es un JSON válido.", 400, "CONTACTOS_INVALIDOS");
-    }
-
-    if (!Array.isArray(contactos) || contactos.length === 0) {
-      throw new AppError("Debe enviar los contactos o acudientes obligatorios.", 400, "CONTACTOS_FALTANTES");
-    }
-
-    // ==========================================
-    // PASO 2: VALIDAR QUE LOS ARCHIVOS EXISTAN
-    // ==========================================
-    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-    const camposObligatorios = ['profilePicture', 'identityDocument'];
-    const archivosFaltantes: string[] = [];
-
-    for (const campo of camposObligatorios) {
-      if (!files || !files[campo] || files[campo].length === 0) {
-        archivosFaltantes.push(campo);
-      }
-    }
-
-    if (archivosFaltantes.length > 0) {
       throw new AppError(
-        `Faltan archivos obligatorios: ${archivosFaltantes.join(", ")}`,
-        400,
-        "ARCHIVOS_FALTANTES"
+        "No autorizado: falta información del usuario.",
+        401,
+        "NO_AUTORIZADO",
       );
     }
 
-    // ==========================================
-    // PASO 3: PREPARAR DATOS DEL ESTUDIANTE
-    // ==========================================
-    const codigoGenerado = await generarCodigoEstudiante();
-    const dataEstudiante = {
-      codigo: codigoGenerado,
-      usuarioId: null,
-      tipoDocumento: req.body.tipoDocumento,
-      numeroDocumento: req.body.numeroDocumento,
-      nombre: req.body.nombre,
-      apellidos: req.body.apellidos,
-      fechaNacimiento: req.body.fechaNacimiento,
-      telefono: req.body.telefono ?? null,
-      gradoAcademico: req.body.gradoAcademico ?? null,
-      institucionEducativa: req.body.institucionEducativa ?? null,
-      reportaDiscapacidad: req.body.reportaDiscapacidad === 'true' || req.body.reportaDiscapacidad === true,
-      estado: "PRE_REGISTRADO" as const,
-    };
+    if (!estudianteId) {
+      throw new AppError("El ID del estudiante es obligatorio.", 400, "ID_REQUERIDO", [
+        { field: "id", message: "Este parámetro es obligatorio." },
+      ]);
+    }
 
-    // ==========================================
-    // PASO 4: SUBIR A SUPABASE (AHORA SÍ, SEGUROS)
-    // ==========================================
-    const documentPaths: Record<string, string> = {};
-    for (const [fieldname, fileArray] of Object.entries(files)) {
-      if (fileArray && fileArray.length > 0) {
-        const file = fileArray[0];
-        uploadFilesPaths.push(file.path); // Guardamos la ruta local por si falla el servicio de BD
-
-        let carpetaSupabase = 'Estudiantes/Otros';
-        if (fieldname === 'profilePicture') carpetaSupabase = 'Estudiantes/FotosPerfil';
-        if (fieldname === 'identityDocument') carpetaSupabase = 'Estudiantes/DocumentosIdentidad';
-        if (fieldname === 'disabilityCertificate') carpetaSupabase = 'Estudiantes/CertificadosDiscapacidad';
-
-        const storagePath = await subirArchivo(file.path, carpetaSupabase, file.mimetype);
-        documentPaths[fieldname] = storagePath;
+    let contactosRecibidos: unknown = req.body?.contactos;
+    if (typeof contactosRecibidos === "string") {
+      try {
+        contactosRecibidos = JSON.parse(contactosRecibidos);
+      } catch {
+        throw new AppError(
+          "El formato de los contactos no es un JSON válido.",
+          400,
+          "CONTACTOS_INVALIDOS",
+        );
       }
     }
 
-    // ==========================================
-    // PASO 5: EJECUTAR TRANSACCIÓN EN BASE DE DATOS
-    // ==========================================
-    const nuevoEstudiante = await preRegistrarEstudiante(dataEstudiante, contactos, usuarioAdminId);
-
-    if (Object.keys(documentPaths).length > 0) {
-      await guardarOActualizarArchivosEnBD(nuevoEstudiante.id, "ESTUDIANTE", documentPaths);
+    if (!Array.isArray(contactosRecibidos) || contactosRecibidos.length === 0) {
+      throw new AppError(
+        "Debe enviar al menos un contacto para actualizar.",
+        400,
+        "CONTACTOS_FALTANTES",
+      );
     }
 
-    requestSucceeded = true;
-    return res.status(201).json({
+    const contactos: DatosActualizacionContacto[] = contactosRecibidos.map(
+      (contacto: unknown, index: number) => {
+        if (typeof contacto !== "object" || contacto === null || Array.isArray(contacto)) {
+          throw new AppError(
+            `El contacto en la posición ${index} no tiene un formato válido.`,
+            400,
+            "CONTACTOS_INVALIDOS",
+          );
+        }
+
+        const datos = contacto as Record<string, unknown>;
+        const {
+          id,
+          tipo,
+          nombre,
+          apellidos,
+          telefono,
+          parentesco,
+          tipoDocumento,
+          numeroDocumento,
+          direccion,
+          ocupacion,
+        } = datos;
+
+        if (
+          (tipo !== "ACUDIENTE_LEGAL" && tipo !== "EMERGENCIA") ||
+          typeof nombre !== "string" ||
+          typeof apellidos !== "string" ||
+          typeof telefono !== "string" ||
+          typeof parentesco !== "string" ||
+          (id !== undefined && typeof id !== "string") ||
+          (tipoDocumento !== undefined && tipoDocumento !== null && typeof tipoDocumento !== "string") ||
+          (numeroDocumento !== undefined && numeroDocumento !== null && typeof numeroDocumento !== "string") ||
+          (direccion !== undefined && direccion !== null && typeof direccion !== "string") ||
+          (ocupacion !== undefined && ocupacion !== null && typeof ocupacion !== "string")
+        ) {
+          throw new AppError(
+            `Los datos del contacto en la posición ${index} son inválidos.`,
+            400,
+            "CONTACTOS_INVALIDOS",
+          );
+        }
+
+        return {
+          ...(typeof id === "string" ? { id } : {}),
+          tipo,
+          nombre,
+          apellidos,
+          telefono,
+          parentesco,
+          tipoDocumento,
+          numeroDocumento,
+          direccion,
+          ocupacion,
+        };
+      },
+    );
+
+    const contactosActualizados = await actualizarDatosContacto(
+      estudianteId,
+      contactos,
+      usuarioAdminId,
+    );
+
+    return res.status(200).json({
       success: true,
-      message: "Estudiante pre-registrado con éxito",
-      data: nuevoEstudiante,
-      documentPaths
+      message: "Datos de contacto del estudiante actualizados correctamente.",
+      data: contactosActualizados,
     });
-
   } catch (error: unknown) {
-    // Si ocurre cualquier error de validación o en la BD, entra aquí 
-    // y el bloque 'finally' limpiará los archivos locales de Multer.
-    return next(error);
-  } finally {
-    if (uploadFilesPaths.length > 0) {
-      await cleanupTemporaryFiles(uploadFilesPaths);
-    }
+    return next(mapEstudianteError(error));
   }
 };
 
 
-repuesta de postman al crear 
+// types de contacto para actualizar 
 
-    "success": true,
-    "message": "Estudiante pre-registrado con éxito",
-    "data": {
-        "id": "79443a37-4486-4ee3-a6ba-bb922c9448bf",
-        "usuarioId": null,
-        "codigo": "EST-001",
-        "tipoDocumento": "CC",
-        "numeroDocumento": "025109116",
-        "nombre": "Lia",
-        "apellidos": "carrasca maldondo",
-        "fechaNacimiento": "2004-04-19",
-        "telefono": "3005603539",
-        "gradoAcademico": "Bachiller",
-        "institucionEducativa": "La presentacion",
-        "reportaDiscapacidad": false,
-        "estado": "PRE_REGISTRADO",
-        "motivoInactivacion": null,
-        "createdAt": "2026-11-09T22:18:32.313Z",
-        "updatedAt": "2026-11-09T22:18:32.313Z",
-        "deletedAt": null,
-        "edadCaculada": 22,
-        "contactos": [
-            {
-                "id": "ab78f152-a74f-49f4-9f17-7ba11524d5c3",
-                "estudianteId": "79443a37-4486-4ee3-a6ba-bb922c9448bf",
-                "tipo": "ACUDIENTE_LEGAL",
-                "nombre": "Carlos",
-                "apellidos": "Pérez Gómez",
-                "tipoDocumento": "CC",
-                "numeroDocumento": "12345678",
-                "telefono": "3101234567",
-                "direccion": "Calle 10 # 5-20",
-                "ocupacion": "Comerciante",
-                "parentesco": "Padre",
-                "createdAt": "2026-11-09T22:18:32.313Z",
-                "updatedAt": "2026-11-09T22:18:32.313Z"
-            },
-            {
-                "id": "6a097983-c9bd-4ac2-9b8b-f94f307e6e3c",
-                "estudianteId": "79443a37-4486-4ee3-a6ba-bb922c9448bf",
-                "tipo": "EMERGENCIA",
-                "nombre": "María",
-                "apellidos": "Gómez Ruiz",
-                "tipoDocumento": "CC",
-                "numeroDocumento": "87654321",
-                "telefono": "3209876543",
-                "direccion": "Calle 10 # 5-20",
-                "ocupacion": "Docente",
-                "parentesco": "Madre",
-                "createdAt": "2026-11-09T22:18:32.313Z",
-                "updatedAt": "2026-11-09T22:18:32.313Z"
-            }
-        ]
-    },
-    "documentPaths": {
-        "profilePicture": "Estudiantes/FotosPerfil/1794262706128-970518248.jpg",
-        "identityDocument": "Estudiantes/DocumentosIdentidad/1794262706625-998528808.pdf"
-    }
-}
+export type DatosActualizacionContacto = Omit<
+  InsertContacto,
+  "estudianteId" | "createdAt" | "updatedAt"
+>;

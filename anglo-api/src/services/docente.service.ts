@@ -344,7 +344,6 @@ export const obtenerDocenteConArchivosPorId = async (
 
 
 
-
 // cambiar estado de docente
 interface ParamsCambioEstado {
   docenteId: string;

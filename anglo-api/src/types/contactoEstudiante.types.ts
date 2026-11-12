@@ -3,3 +3,7 @@ import type { InferInsertModel, InferSelectModel } from "drizzle-orm"
 
 export type InsertContacto = InferInsertModel<typeof contactoEstudiante>;
 export type Contactos = InferSelectModel<typeof contactoEstudiante>;
+export type DatosActualizacionContacto = Omit<
+  InsertContacto,
+  "estudianteId" | "createdAt" | "updatedAt"
+>;

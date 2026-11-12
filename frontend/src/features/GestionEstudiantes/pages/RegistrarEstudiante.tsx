@@ -350,7 +350,11 @@ export function RegistrarEstudiantePage() {
                     id={`contacto-tipo-${index}`}
                     value={contacto.tipo}
                     onChange={(event) =>
-                      actualizarContacto(index, "tipo", event.target.value)
+                      actualizarContacto(
+                        index,
+                        "tipo",
+                        event.target.value as ContactoFormulario["tipo"],
+                      )
                     }
                     className="form-input"
                     required

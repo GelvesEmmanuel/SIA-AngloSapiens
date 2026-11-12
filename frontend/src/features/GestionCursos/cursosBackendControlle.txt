@@ -1,0 +1,165 @@
+Aqui encuentras la guia de los controladores dle backend y las rutas para que conoscas lo que espera recibir el backend y poder crrear las funciones de  gestionar los cursos
+onst obtenerIdCurso = (req: AuthRequest): string => {
+  const rawId = req.params.id;
+  const id = Array.isArray(rawId) ? rawId[0] : rawId;
+  return z.string().uuid("El ID del curso debe ser un UUID válido.").parse(id);
+};
+
+const obtenerUsuarioAdminId = (req: AuthRequest): string => {
+  const usuarioAdminId = req.user?.usuarioId;
+  if (!usuarioAdminId) {
+    throw new AppError("No autorizado.", 401, "NO_AUTORIZADO");
+  }
+  return usuarioAdminId;
+};
+
+export const listarCursosController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const filtros = filtrosCursoSchema.parse(req.query);
+    const cursos = await obtenerCursos(filtros);
+    return res.status(200).json({
+      success: true,
+      message: "Cursos listados exitosamente.",
+      data: cursos,
+    });
+  } catch (error: unknown) {
+    return next(mapCursoError(error));
+  }
+};
+
+export const obtenerCursoPorIdController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const curso = await obtenerCursoPorId(obtenerIdCurso(req));
+    return res.status(200).json({
+      success: true,
+      message: "Curso encontrado exitosamente.",
+      data: curso,
+    });
+  } catch (error: unknown) {
+    return next(mapCursoError(error));
+  }
+};
+
+export const registrarCursoController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const usuarioAdminId = obtenerUsuarioAdminId(req);
+    const datos = crearCursoSchema.parse(req.body);
+    const data: InsertCurso = {
+      codigo: await generarCodigoCurso(),
+      nombre: datos.nombre,
+      nivel: datos.nivel,
+      descripcion: datos.descripcion ?? null,
+      duracionSemanas: datos.duracionSemanas,
+      intensidadSemanal: datos.intensidadSemanal,
+    };
+    const curso = await registrarCurso(data, datos.habilidades, usuarioAdminId);
+
+    return res.status(201).json({
+      success: true,
+      message: "Curso registrado exitosamente.",
+      data: curso,
+    });
+  } catch (error: unknown) {
+    return next(mapCursoError(error));
+  }
+};
+
+export const actualizarCursoController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const usuarioAdminId = obtenerUsuarioAdminId(req);
+    const cursoId = obtenerIdCurso(req);
+    const datos = actualizarCursoSchema.parse(req.body);
+    const curso = await actualizarCurso(cursoId, datos, usuarioAdminId);
+
+    return res.status(200).json({
+      success: true,
+      message: "Curso actualizado exitosamente.",
+      data: curso,
+    });
+  } catch (error: unknown) {
+    return next(mapCursoError(error));
+  }
+};
+
+const cambiarEstadoCursoController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+  estado: "ACTIVO" | "INACTIVO",
+) => {
+  try {
+    const usuarioAdminId = obtenerUsuarioAdminId(req);
+    const cursoId = obtenerIdCurso(req);
+    const curso =
+      estado === "ACTIVO"
+        ? await activarCurso(cursoId, usuarioAdminId)
+        : await inactivarCurso(cursoId, usuarioAdminId);
+
+    return res.status(200).json({
+      success: true,
+      message: `Curso ${estado === "ACTIVO" ? "activado" : "inactivado"} exitosamente.`,
+      data: curso,
+    });
+  } catch (error: unknown) {
+    return next(mapCursoError(error));
+  }
+};
+
+export const activarCursoController = (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => cambiarEstadoCursoController(req, res, next, "ACTIVO");
+
+export const inactivarCursoController = (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => cambiarEstadoCursoController(req, res, next, "INACTIVO");
+
+
+las rutas 
+router.use(verificarToken, autorizado);
+router.get("/listar", listarCursosController);
+router.get("/listar/:id", obtenerCursoPorIdController);
+router.post("/registrar", registrarCursoController);
+router.patch("/actualizar/:id", actualizarCursoController);
+router.patch("/activar/:id", activarCursoController);
+router.patch("/inactivar/:id", inactivarCursoController);
+
+
+los type de habildiades y de nivel 
+export type HabilidadCurso = 
+  | "SPEAKING"
+  | "WRITING"
+  | "LISTENING"
+  | "READING"
+  | "GRAMMAR"
+  | "HOMEWORK"
+  | "ASISTENCIA"
+  | "PARTICIPATION"
+  | "EXAMS";
+
+  export type NivelCurso = 
+  |"A1"
+  |"A2"
+  |"B1"
+  |"B2"
+  |"C1"
+  |"C2";

@@ -5,6 +5,7 @@ export type EstudianteStatus =
   | "INACTIVO";
 
 export type TipoDocumentoEstudiante = "CC" | "CE" | "TI" | "PAS";
+export type TipoContacto = "ACUDIENTE_LEGAL" | "EMERGENCIA";
 
 export type CategoriaDocumento =
   | "FOTO"
@@ -12,13 +13,14 @@ export type CategoriaDocumento =
   | "FIRMA"
   | "DISCAPACIDAD";
 
-export type ArchivoEstudianteField =
+export type ArchivoEstudianteField = 
   | "profilePicture"
   | "identityDocument"
-  | "disabilityCertificate";
+  | "disabilityCertificate"
+  | "firmaDigital";
 
 export interface ContactoEstudiantePayload {
-  tipo: string;
+  tipo: TipoContacto;
   nombre: string;
   apellidos: string;
   tipoDocumento?: string | null;
@@ -27,6 +29,22 @@ export interface ContactoEstudiantePayload {
   direccion?: string | null;
   ocupacion?: string | null;
   parentesco: string;
+}
+
+export interface ActualizarContactoEstudiantePayload
+  extends ContactoEstudiantePayload {
+  id?: string;
+}
+
+export interface ContactoEstudiante extends ContactoEstudiantePayload {
+  id: string;
+  estudianteId: string;
+  tipoDocumento: string | null;
+  numeroDocumento: string | null;
+  direccion: string | null;
+  ocupacion: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface PreRegistrarEstudiantePayload {
@@ -45,15 +63,12 @@ export interface PreRegistrarEstudiantePayload {
   disabilityCertificate?: File;
 }
 
-export interface ContactoEstudiante extends ContactoEstudiantePayload {
+export interface ArchivoEstudiante {
   id: string;
-  estudianteId: string;
-  tipoDocumento: string | null;
-  numeroDocumento: string | null;
-  direccion: string | null;
-  ocupacion: string | null;
-  createdAt: string;
-  updatedAt: string;
+  categoria: CategoriaDocumento;
+  pathOriginal: string;
+  url: string | null;
+  estado: "VIGENTE" | "HISTORICO";
 }
 
 export interface Estudiante {
@@ -68,22 +83,24 @@ export interface Estudiante {
   telefono: string | null;
   gradoAcademico: string | null;
   institucionEducativa: string | null;
+  terminosyCondiciones: boolean;
+  consentimientoUsoImagen: boolean;
   reportaDiscapacidad: boolean;
   estado: EstudianteStatus;
   motivoInactivacion: string | null;
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
-  edadCaculada: number;
+  edadCaculada?: number;
   contactos: ContactoEstudiante[];
+  documentos: ArchivoEstudiante[];
 }
 
-export interface ArchivoEstudiante {
-  id: string;
-  categoria: CategoriaDocumento;
-  pathOriginal: string;
-  url: string | null;
-  estado: "VIGENTE" | "HISTORICO";
+export interface ListarEstudiantesParams {
+  page?: number;
+  limit?: number;
+  busqueda?: string;
+  estado?: EstudianteStatus;
 }
 
 export interface ApiResponse<T = null> {
@@ -96,3 +113,37 @@ export interface PreRegistrarEstudianteResponse
   extends ApiResponse<Estudiante> {
   documentPaths: Partial<Record<ArchivoEstudianteField, string>>;
 }
+
+export interface RegistrarEstudianteConFirmaPayload {
+  numeroDocumento: string;
+  terminosyCondiciones: boolean;
+  consentimientoUsoImagen: boolean;
+  firmaDigital: File;
+}
+
+export interface RegistrarEstudianteConFirmaResponse
+  extends ApiResponse<Estudiante & { usernameGenerado: string }> {
+  documentPaths: { firmaDigital: string };
+}
+export interface CambiarEstadoEstdiantePayload {
+  nuevoEstado: EstudianteStatus;
+  motivoInactivacion?: string | null;
+}
+export type AccionEstudiante =
+  | {
+      tipo: "estado";
+      estudianteId: string;
+    }
+  | {
+      tipo: "actualizar_datos";
+      estudianteId: string;
+    }
+  | {
+      tipo: "actualizar_documentos";
+      estudianteId: string;
+    }
+  | {
+      tipo: "actualizar_contactos";
+      estudianteId: string;
+    }
+  | null;

@@ -25,7 +25,7 @@ router.get(
   verificarToken,
   autorizado,
   buscarUsuarioDisponibleParaDocenciaController,
-);
+); 
 router.post(
   "/usuarios-existentes/:usuarioId/docente",
   verificarToken,

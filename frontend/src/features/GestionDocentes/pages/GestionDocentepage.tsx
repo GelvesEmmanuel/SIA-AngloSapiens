@@ -39,6 +39,7 @@ const datosDocenteVacio: VincularDocentePayload = {
 };
 
 export function GestionDocentePage() {
+  // para vincular docentes a cordinadores
   const navigate = useNavigate();
   const [mostrarVinculacion, setMostrarVinculacion] = useState(false);
   const [documentoBusqueda, setDocumentoBusqueda] = useState("");
@@ -234,17 +235,17 @@ export function GestionDocentePage() {
 
       </section>
 
-      {/* Mensajes globales */}
-      {mensajeExito && (
-        <div
-          role="status"
-          className="rounded-lg border border-green/25 bg-green-soft p-4"
-        >
-          <p className="text-sm font-medium text-green">
-            {mensajeExito}
-          </p>
-        </div>
-      )}
+        {/* Mensajes globales */}
+        {mensajeExito && (
+          <div
+            role="status"
+            className="rounded-lg border border-green/25 bg-green-soft p-4"
+          >
+            <p className="text-sm font-medium text-green">
+              {mensajeExito}
+            </p>
+          </div>
+        )}
 
       {errorAccion && (
         <div

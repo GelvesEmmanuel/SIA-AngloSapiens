@@ -70,7 +70,7 @@ export function useDocentes() {
   try {
     setIsLoading(true);
     setError("");
-
+ 
     const response = await listarDocentes({
       busqueda: busquedaDebounced || undefined,
       estado: estado || undefined,
