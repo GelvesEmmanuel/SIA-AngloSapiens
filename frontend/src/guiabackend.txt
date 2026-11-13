@@ -1,0 +1,16 @@
+//rutas del modulod e matriculas 
+autorizarRoles("SUPER_ADMIN",  "COORD_ADMINISTRATIVO"),
+);
+router.get("/listar", listarMatriculasController);
+router.get("/listar/:id", obtenerMatriculaPorIdController);
+router.post("/registrar", crearMatriculaController);
+router.patch("/actualizar/:id", actualizarMatriculaController);
+router.patch("/estado/:id", cambiarEstadoMatriculaController);
+
+y esta son las funcionalidades del backend
+Registro con validación de estudiante y grupo, prevención de duplicados, código MAT-0001, reserva de cupo y actualización del estado del estudiante a MATRICULADO.
+Listado con filtros y consulta por identificador.
+Edición de campos no críticos.
+Cancelación o finalización con fecha correspondiente y auditoría; al cancelar, se libera el cupo.
+Rutas protegidas para los roles administrativos y académicos.
+Archivos principales: matricula.service.ts, matriculas.controller.ts, matriculas.routes.ts y app.ts.

@@ -1,6 +1,6 @@
 import { and, desc, eq, ilike, inArray, isNull, or } from "drizzle-orm";
 import { db } from "../config/db.js";
-import { cursos, habilidadesCurso } from "../config/db/schema.js";
+import { cursos, habilidadesCurso, grupos } from "../config/db/schema.js";
 import type {
   ActualizarCurso,
   CursoConHabilidades,
@@ -10,6 +10,7 @@ import type {
   InsertCurso,
 } from "../types/cursos.types.js";
 import { registrarAuditoria } from "./auditoriaSis.service.js";
+import { AppError } from "../utils/appError.utils.js";
 
 export const generarCodigoCurso = async(): Promise<string> => {
     // buscamos en la base de datos el ultimo curso registrado
@@ -182,7 +183,24 @@ export const cambiarEstadoCurso = async (
     if (!cursoActual) {
       throw new Error("CURSO_NO_ENCONTRADO");
     }
+    // 2. Validación de negocio: Si se intenta pasar a INACTIVO
+    if (nuevoEstado === "INACTIVO") {
+      // Buscar si el curso tiene al menos un grupo con estado PROGRAMADO o EN_CURSO
+      const [grupoVigente] = await tx
+        .select({ id: grupos.id, estado: grupos.estado })
+        .from(grupos)
+        .where(
+          and(
+            eq(grupos.cursoId, cursoId), // Asumiendo que la columna en grupos se llama cursoId
+            inArray(grupos.estado, ["PROGRAMADO", "EN_CURSO"])
+          )
+        )
+        .limit(1);
 
+      if (grupoVigente) {
+        throw new AppError("No puedes INACTIVAR el curso ya ue tiene grupos vigentes en estado PROGRAMADO O EN_CURSO",400,"CURSO_TIENE_GRUPOS_VIGENTES");
+      }
+    }
     const [cursoActualizado] = await tx
       .update(cursos)
       .set({ estado: nuevoEstado, updatedAt: new Date() })

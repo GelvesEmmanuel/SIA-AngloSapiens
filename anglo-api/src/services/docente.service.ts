@@ -5,6 +5,7 @@ import {
   docentes,
   usuarioRoles,
   usuarios,
+  grupos
 } from "../config/db/schema.js";
 
 import type {
@@ -14,12 +15,13 @@ import type {
   DocenteConExpediente
 } from "../types/docentes.types.js";
 import { EstadoDocente } from "../types/docentes.types.js";
-import { eq, ilike, sql, and } from "drizzle-orm"; // usado para el filtro WHERE
+import { eq, ilike, sql, and, inArray } from "drizzle-orm"; // usado para el filtro WHERE
 import { desc } from "drizzle-orm";
 import { crearUsuarioBaseParaModulo } from "../utils/usuario.utils.js";
 import { registrarAuditoria } from "./auditoriaSis.service.js";
 import {guardarOActualizarArchivosEnBD} from "./archivos.service.js";
 import { obtenerUrlFirmada } from "./storage.service.js";
+import { AppError } from "../utils/appError.utils.js";
 export const registrarDocente = async (
   data: InsertDocente,
   usuarioAdminId: string,
@@ -373,6 +375,23 @@ export const cambiarEstadoDocente = async ({
   ) {
     throw new Error("MOTIVO_INACTIVACION_REQUERIDO");
   }
+
+  //2.2 validacion de negocio , veiricar si el grupo al que esta vinculado el docente no est programado o activo
+
+  const [grupoAsignado] = await db
+  .select({ id: grupos.id, estado: grupos.estado })
+      .from(grupos)
+      .where(
+        and(
+          eq(grupos.docenteId, docenteId),
+          inArray(grupos.estado, ["PROGRAMADO", "EN_CURSO"])
+        )
+      )
+      .limit(1);
+
+      if(grupoAsignado){
+        throw new AppError("No se puede inactivar el docente porque tiene grupos programados o en_curso",400,"DOCENTE_TIENE_GRUPOS_EN_CUROS_O_PROGRAMADOS");
+      }
 
   //3. Preparar los datos a aactualizar
   const datosActualizar: any = { estado: nuevoEstado };

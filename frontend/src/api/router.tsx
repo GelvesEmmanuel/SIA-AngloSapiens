@@ -24,6 +24,9 @@ import { RegistrarGrupoPage } from "../features/GestionGrupos/pages/RegistrarGru
 import { DetalleGrupoPage } from "../features/GestionGrupos/pages/DetalleGrupoPage";
 import { GestionPeriodosPage } from "../features/GestionPeriodos/pages/GestionPeriodosPage";
 import { GestionAulasPage } from "../features/GestionAulas/pages/GestionAulasPage";
+import { GestionMatriculasPage } from "../features/GestionMatriculas/pages/GestionMatriculasPage";
+import { RegistrarMatriculaPage } from "../features/GestionMatriculas/pages/RegistrarMatriculaPage";
+import { DetalleMatriculaPage } from "../features/GestionMatriculas/pages/DetalleMatriculaPage";
 export function AppRouter() {
   return (
     <Routes>
@@ -167,6 +170,20 @@ export function AppRouter() {
         <Route index element={<GestionGruposPage />} />
         <Route path="registrar" element={<RegistrarGrupoPage />} />
         <Route path=":id" element={<DetalleGrupoPage />} />
+      </Route>
+      <Route
+        path="/matriculas"
+        element={
+          <RequireAuth>
+            <RequireRouteAccess>
+              <DashboardLayout />
+            </RequireRouteAccess>
+          </RequireAuth>
+        }
+      >
+        <Route index element={<GestionMatriculasPage />} />
+        <Route path="registrar" element={<RegistrarMatriculaPage />} />
+        <Route path=":id" element={<DetalleMatriculaPage />} />
       </Route>
       <Route
         path="/periodos"

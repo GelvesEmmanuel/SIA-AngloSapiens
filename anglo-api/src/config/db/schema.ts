@@ -480,6 +480,8 @@ export const matriculas = pgTable(
     modoPago: modoPagoEnum("modo_pago"),
     estadoPago: estadoPagoEnum("estado_pago").notNull().default("NO_PAGO"),
     estadoMatricula: estadoMatriculaEnum("estado_matricula").notNull().default("ACTIVA"),
+    observaciones: text("observaciones"),
+    fechaFinalizacion: date("fecha_finalizacion", { mode: "string" }),
     fechaMatricula: date("fecha_matricula", { mode: "string" }).notNull().default(sql`CURRENT_DATE`),
     fechaCancelacion: date("fecha_cancelacion", { mode: "string" }),
     createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),

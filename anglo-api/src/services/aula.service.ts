@@ -1,6 +1,6 @@
-import { and, desc, eq, ilike, isNull } from "drizzle-orm";
+import { and, desc, eq, ilike, isNull, inArray } from "drizzle-orm";
 import { db } from "../config/db.js";
-import { aulas } from "../config/db/schema.js";
+import { aulas, grupos } from "../config/db/schema.js";
 import type { FiltrosAula } from "../types/aulas.types.js";
 import { AppError } from "../utils/appError.utils.js";
 import { registrarAuditoria } from "./auditoriaSis.service.js";
@@ -42,6 +42,9 @@ export const obtenerAulaPorId = async (id: string) => {
   return aula;
 };
 
+
+
+
 /** Actualiza el nombre del aula sin alterar su estado de disponibilidad. */
 export const actualizarAula = async (id: string, nombre: string, usuarioId: string) => {
   const actual = await obtenerAulaPorId(id);
@@ -62,9 +65,37 @@ export const actualizarAula = async (id: string, nombre: string, usuarioId: stri
   return actualizada;
 };
 
+
+
 /** Activa o desactiva un aula para impedir o permitir asignarla a grupos. */
 export const cambiarEstadoAula = async (id: string, activa: boolean, usuarioId: string) => {
   const actual = await obtenerAulaPorId(id);
+
+  if (!actual) {
+    throw new AppError("El aula especificada no existe.", 404, "AULA_NO_ENCONTRADA");
+  }
+
+  // Validación de negocio: Si se intenta DESACTIVAR (activa pasa a ser false)
+  if (activa === false) {
+    const [grupoVigente] = await db
+      .select({ id: grupos.id, estado: grupos.estado })
+      .from(grupos)
+      .where(
+        and(
+          eq(grupos.aulaId, id),
+          inArray(grupos.estado, ["PROGRAMADO", "EN_CURSO"])
+        )
+      )
+      .limit(1);
+
+    if (grupoVigente) {
+      throw new AppError(
+        "No se puede desactivar el aula porque está asignada a grupos vigentes (Programados o En Curso).",
+        400,
+        "AULA_TIENE_GRUPOS_VIGENTES"
+      );
+    }
+  }
   const [actualizada] = await db
     .update(aulas)
     .set({ activa, updatedAt: new Date() })

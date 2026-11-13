@@ -13,7 +13,7 @@ import { registrarAuditoria } from "./auditoriaSis.service.js";
 import { guardarOActualizarArchivosEnBD } from "./archivos.service.js";
 
 import { obtenerUrlFirmada } from "./storage.service.js";
-import { estudiantes, contactoEstudiante,archivos } from "../config/db/schema.js";
+import { estudiantes, contactoEstudiante,archivos, matriculas } from "../config/db/schema.js";
 import { AppError } from "../utils/appError.utils.js";
 
 
@@ -351,6 +351,23 @@ export const cambiarEstadoEstudiante = async ({
     (!motivoInactivacion || motivoInactivacion.trim() === "")
   ) {
     throw new Error("MOTIVO_INACTIVACION_REQUERIDO");
+  }
+  // 3. Validación de negocio: Si se intenta INACTIVAR, verificar que NO tenga matrículas activas
+  if (nuevoEstado === EstadoEstudiante.INACTIVO) {
+    const [matriculaActiva] = await db
+      .select({ id: matriculas.id })
+      .from(matriculas)
+      .where(
+        and(
+          eq(matriculas.estudianteId, estudianteId),
+          eq(matriculas.estadoMatricula, "ACTIVA") // O EstadoMatricula.ACTIVA dependiendo de tu enum
+        )
+      )
+      .limit(1);
+
+    if (matriculaActiva) {
+      throw new AppError("No puedes inactivar al estudiante porque tiene matriculas activas",400,"ESTUDIANTE_TIENE_MATRICULAS_ACTIVAS");
+    }
   }
 
   //3. Preparar los datos a aactualizar

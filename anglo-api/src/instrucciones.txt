@@ -1,17 +1,18 @@
-Este arhcivo contiene la guia de la forma en la que se debe de desarrollar los archivos, service, controller, routes, types , validators para la gestion de los grupos
+Este arhcivo contiene la guia de la forma en la que se debe de desarrollar los archivos, service, controller, routes, types , validators para la gestion de las matriculas
 
-1 paso .se debe de crear las funionalidades para leer consultar cambiar estado y editar periodos academicos,
-En Schema.ts se encuentra la tabla de periodos academicosnombre y la const estadoPeriodoEnum , el docigo del periodo debe seguir el formato PER-000y y el nombre que es el indicador del periodo por ejemplo (2026-01, o , 2026-02) es escrito por el usuario.
-2 paso. Se deben de generar las funcionalidades para crear aulas desactivar leer o actualizar su nombre.
-En Schema.ts se encuentra la tabla aulas.
-3 paso.
-Un grupo es una instancia real del curso, para ello se deben de crear los archivos para las funcionalidades de los grupos
-En SChema.ts se encuentra la tabla de grupos, y la const estadoGrupoEnum, y se encuentra la tabla horariosGrupos
-un grupo debe de permitir seelccionar un periodo siempre que este activo o programado, si esta canmcelado o finalizado debe denegar, debe de permitir seleccionar un curso siempre que este activo , si esta inactivo debe denegar
-EL grupo debe de permitir seleccionar al docente siempre que el docente se encuentre activo si esta inactivo debe de denegar, y si el docente ya tiene un grupo en la misma aula  al amisma hora el mismo dia denegar o advertir
-EL grupo debe de permitir selccionar el aula de clases verificando que el aula no este ocupada ese dia a ese horario,
-El grupo debe de permitira seleccionar los dias de la semana del grupo y la hora inicio y hora fin del grupo en ese dia de la semana.
-El grupo ebe de permiotir selccionar el cupo maximo del grupo y ir registrado el cupo disponible
-
-Genera solo los archivos necesarios, comenta las funcionalidades principales indicando su funcionalidades
-Usa los mismos patrones de diseño y desarrollo del resto del proyecto
+// 
+// Crea el servicio para el módulo de "matriculas".
+// E Schema.ts se encuentra la tabla de matriculas y sus enum
+// Debe incluir:
+// 1. Una función para matricular un estudiante a un grupo, validando:
+//    - Que el estudiante exista y esté en estado REGISTRADO.
+//    - Que el grupo exista y esté en estado "PROGRAMADO" o "EN_CURSO".
+//    - Que no exista ya una matrícula previa para ese estudiante en ese grupo (uk_estudiante_grupo).
+//    - (Opcional) Validar cupos máximos del grupo si aplica.
+//    - Restar un cupo al grupo donde se registra el estudiante.
+//    - Si la matricula es exitosa pasar el esatdo del estduiante a MATRICULADO
+//    - Codigo de matricula MAT-0000
+//2. Una función para cancelar o finalizar la matrícula, actualizando la "fecha_finalizacion" y el estado.
+//3. Las funciones para listar matriculas y listarMAtricula por indicador
+//4. Una funcion para editar campos no criticos
+// 3. Manejo de errores con la clase AppError y registro de auditoría con "registrarAuditoria".

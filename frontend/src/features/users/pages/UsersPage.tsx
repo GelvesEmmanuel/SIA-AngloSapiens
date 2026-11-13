@@ -237,6 +237,14 @@ const confirmarAccion = async () => {
 
       {/* Encabezado */}
       <header className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+        
+        <div>
+          <p className="eyebrow mb-2">Administración</p>
+          <h1 className="page-title">Usuarios</h1>
+          <p className="mt-2 text-sm text-muted">
+            Consulta y administra las cuentas de acceso al sistema académico.
+          </p>
+        </div>
         <button
   type="button"
   onClick={() => {
@@ -247,14 +255,8 @@ const confirmarAccion = async () => {
 >
   + Crear coordinador
 </button>
-        <div>
-          <p className="eyebrow mb-2">Administración</p>
-          <h1 className="page-title">Usuarios</h1>
-          <p className="mt-2 text-sm text-muted">
-            Consulta y administra las cuentas de acceso al sistema académico.
-          </p>
-        </div>
       </header>
+      
 
       {/* Indicadores */}
       <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">

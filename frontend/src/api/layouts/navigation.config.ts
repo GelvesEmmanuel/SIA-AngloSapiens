@@ -74,7 +74,7 @@ export const navigationConfig: NavigationSection[] = [
         label: "Matrículas",
         path: "/matriculas",
         icon: "ClipboardList",
-        allowedRoles: COORD_ROLES,
+        allowedRoles: ["SUPER_ADMIN", "COORD_ADMINISTRATIVO"],
       },
     ],
   },

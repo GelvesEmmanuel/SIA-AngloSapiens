@@ -1,4 +1,16 @@
-import { and, desc, eq, gt, ilike, isNull, lt, or } from "drizzle-orm";
+import {
+  and,
+  desc,
+  eq,
+  gt,
+  ilike,
+  inArray,
+  isNull,
+  lt,
+  ne,
+  or,
+  sql,
+} from "drizzle-orm";
 import { db } from "../config/db.js";
 import { grupos, periodosAcademicos } from "../config/db/schema.js";
 import type {
@@ -143,7 +155,36 @@ export const cambiarEstadoPeriodoAcademico = async (
   estado: EstadoPeriodo,
   usuarioId: string,
 ) => {
+  // validar si existe curso
   const actual = await obtenerPeriodoAcademicoPorId(id);
+  
+  if (!actual) {
+    throw new Error("PERIODO_NO_ENCONTRADO");
+  }
+
+  // 2. Validación de negocio: Si el nuevo estado es FINALIZADO o INACTIVO
+  const estadosRestringidos = ["FINALIZADO","INACTIVO"]; // O strings directos según tu enum
+  if (estadosRestringidos.includes(estado)) {
+    
+    // Buscar si existe al menos un grupo con estado PROGRAMADO o EN_CURSO en este periodo
+    const [grupoVigente] = await db
+      .select({ id: grupos.id, estado: grupos.estado })
+      .from(grupos)
+      .where(
+        and(
+          eq(grupos.periodoId, id),
+          inArray(grupos.estado, ["PROGRAMADO", "EN_CURSO"])
+        )
+      )
+      .limit(1);
+      
+    throw new AppError(
+        "No se puede finalizar o inactivar el periodo porque tiene grupos vigentes (Programados o En Curso).",
+        400,
+        "PERIODO_TIENE_GRUPOS_VIGENTES"
+      );
+  }
+
   const [actualizado] = await db
     .update(periodosAcademicos)
     .set({ estado, updatedAt: new Date() })
@@ -160,3 +201,47 @@ export const cambiarEstadoPeriodoAcademico = async (
   });
   return actualizado;
 };
+
+/** Finaliza periodos vencidos y sus grupos activos en una única transacción. */
+// Esta funcion tiene el fin de que al momento de que se termina un periodo siendo valdiado con su fecha fin el periodo pase a finalizado , y los grupos que estan vinculaods al periodo pasan a finalizados tambien
+export const finalizarPeriodosAcademicosVencidos = async () =>
+  db.transaction(async (tx) => {
+    const periodosVencidos = await tx
+      .select({ id: periodosAcademicos.id })
+      .from(periodosAcademicos)
+      .where(lt(periodosAcademicos.fechaFin, sql<string>`CURRENT_DATE`));
+    const periodoIds = periodosVencidos.map(({ id }) => id);
+
+    if (!periodoIds.length) {
+      return { periodosFinalizados: 0, gruposFinalizados: 0 };
+    }
+
+    const periodosActualizados = await tx
+      .update(periodosAcademicos)
+      .set({ estado: "FINALIZADO", updatedAt: new Date() })
+      .where(
+        and(
+          inArray(periodosAcademicos.id, periodoIds),
+          ne(periodosAcademicos.estado, "FINALIZADO"),
+        ),
+      )
+      .returning({ id: periodosAcademicos.id });
+
+    const gruposActualizados = await tx
+      .update(grupos)
+      .set({ estado: "FINALIZADO", updatedAt: new Date() })
+      .where(
+        and(
+          inArray(grupos.periodoId, periodoIds),
+          ne(grupos.estado, "FINALIZADO"),
+          ne(grupos.estado, "CANCELADO"),
+          isNull(grupos.deletedAt),
+        ),
+      )
+      .returning({ id: grupos.id });
+
+    return {
+      periodosFinalizados: periodosActualizados.length,
+      gruposFinalizados: gruposActualizados.length,
+    };
+  });
