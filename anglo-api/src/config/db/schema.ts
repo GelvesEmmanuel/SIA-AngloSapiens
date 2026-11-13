@@ -394,6 +394,8 @@ export const habilidadesCurso = pgTable(
   (table) => [primaryKey({ columns: [table.cursoId, table.habilidad] })],
 );
 
+
+
 export const grupos = pgTable(
   "grupos",
   {
@@ -405,10 +407,11 @@ export const grupos = pgTable(
       .notNull()
       .references(() => cursos.id, { onDelete: "restrict" }),
     docenteId: uuid("docente_id").references(() => docentes.id, { onDelete: "set null" }),
+    aulaId: uuid("aula_id").references(() => aulas.id, { onDelete: "set null" }),
     codigo: varchar("codigo", { length: 20 }).notNull(),
     cupoMaximo: integer("cupo_maximo").notNull(),
     cuposDisponibles: integer("cupos_disponibles").notNull(),
-    aula: varchar("aula", { length: 50 }),
+
     fechaInicio: date("fecha_inicio", { mode: "string" }).notNull(),
     fechaFin: date("fecha_fin", { mode: "string" }).notNull(),
     estado: estadoGrupoEnum("estado").notNull().default("PROGRAMADO"),
@@ -427,6 +430,18 @@ export const grupos = pgTable(
       .on(table.docenteId)
       .where(sql`${table.docenteId} IS NOT NULL`),
   ],
+);
+
+export const aulas = pgTable(
+  "aulas",
+  {
+    id: uuid("id").primaryKey().default(sql`uuid_generate_v4()`),
+    nombre: varchar("nombre", { length: 50 }).notNull().unique(), // Ej: "Aula 1", "Salón Londres", "Room 102"
+    activa: boolean("activa").notNull().default(true), // Para deshabilitarla temporalmente (mantenimiento, etc.)
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at", { mode: "date" }),
+  },
 );
 
 export const horariosGrupos = pgTable(

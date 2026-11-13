@@ -19,6 +19,11 @@ import { DetalleEstudiantePage } from "../features/GestionEstudiantes/pages/Deta
 import { GestionCursosPage } from "../features/GestionCursos/pages/GestionCursosPage";
 import { RegistrarCursoPage } from "../features/GestionCursos/pages/RegistrarCursoPage";
 import { DetalleCursoPage } from "../features/GestionCursos/pages/DetalleCursoPage";
+import { GestionGruposPage } from "../features/GestionGrupos/pages/GestionGruposPage";
+import { RegistrarGrupoPage } from "../features/GestionGrupos/pages/RegistrarGrupoPage";
+import { DetalleGrupoPage } from "../features/GestionGrupos/pages/DetalleGrupoPage";
+import { GestionPeriodosPage } from "../features/GestionPeriodos/pages/GestionPeriodosPage";
+import { GestionAulasPage } from "../features/GestionAulas/pages/GestionAulasPage";
 export function AppRouter() {
   return (
     <Routes>
@@ -148,6 +153,44 @@ export function AppRouter() {
         <Route index element={<GestionCursosPage />} />
         <Route path="registrar" element={<RegistrarCursoPage />} />
         <Route path=":id" element={<DetalleCursoPage />} />
+      </Route>
+      <Route
+        path="/grupos"
+        element={
+          <RequireAuth>
+            <RequireRouteAccess>
+              <DashboardLayout />
+            </RequireRouteAccess>
+          </RequireAuth>
+        }
+      >
+        <Route index element={<GestionGruposPage />} />
+        <Route path="registrar" element={<RegistrarGrupoPage />} />
+        <Route path=":id" element={<DetalleGrupoPage />} />
+      </Route>
+      <Route
+        path="/periodos"
+        element={
+          <RequireAuth>
+            <RequireRouteAccess>
+              <DashboardLayout />
+            </RequireRouteAccess>
+          </RequireAuth>
+        }
+      >
+        <Route index element={<GestionPeriodosPage />} />
+      </Route>
+      <Route
+        path="/aulas"
+        element={
+          <RequireAuth>
+            <RequireRouteAccess>
+              <DashboardLayout />
+            </RequireRouteAccess>
+          </RequireAuth>
+        }
+      >
+        <Route index element={<GestionAulasPage />} />
       </Route>
       <Route
         path="/cambiar-contrasena"

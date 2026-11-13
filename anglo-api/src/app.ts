@@ -9,6 +9,9 @@ import authRoutes from './routes/auth.routes.js'
 import adminRoutes from './routes/admin.routes.js'
 import estudiantesRoutes from './routes/estudiantes.routes.js'
 import cursosRoutes from './routes/cursos.route.js'
+import gruposRoutes from './routes/grupos.routes.js'
+import periodosAcademicosRoutes from './routes/periodosAcademicos.routes.js'
+import aulasRoutes from './routes/aulas.routes.js'
 import { errorHandler } from './middlewares/errorHandler.middleware.js';
 import { estudiantes } from './config/db/schema.js';
 const app = express();
@@ -27,5 +30,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/GestionEstudiante', estudiantesRoutes)
 app.use('/api/cursos', cursosRoutes)
+app.use('/api/grupos', gruposRoutes)
+app.use('/api/periodos', periodosAcademicosRoutes)
+app.use('/api/aulas', aulasRoutes)
 app.use(errorHandler);
 export default app; // Exportas la instancia de express

@@ -10,6 +10,8 @@ import {
   CalendarCheck,
   ChartNoAxesColumn,
   History,
+  CalendarDays,
+  School,
   ShieldCheck,
   X,
   type LucideIcon,
@@ -35,6 +37,8 @@ const icons: Record<string, LucideIcon> = {
   CalendarCheck,
   ChartNoAxesColumn,
   History,
+  CalendarDays,
+  School,
 };
 
 const roleLabels: Record<string, string> = {

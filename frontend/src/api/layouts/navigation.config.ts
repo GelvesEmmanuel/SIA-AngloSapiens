@@ -98,9 +98,20 @@ export const navigationConfig: NavigationSection[] = [
         allowedRoles: [
           "SUPER_ADMIN",
           "COORD_ACADEMICO",
-          "DOCENTE",
-          "ESTUDIANTE",
+          "COORD_ADMINISTRATIVO",
         ],
+      },
+      {
+        label: "Periodos académicos",
+        path: "/periodos",
+        icon: "CalendarDays",
+        allowedRoles: ["SUPER_ADMIN", "COORD_ACADEMICO"],
+      },
+      {
+        label: "Aulas",
+        path: "/aulas",
+        icon: "School",
+        allowedRoles: COORD_ROLES,
       },
       {
         label: "Asistencias",

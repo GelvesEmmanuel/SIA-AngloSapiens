@@ -12,7 +12,6 @@ import { autorizarRoles, verificarToken } from "../middlewares/auth.midleware.js
 const router = Router();
 const autorizado = autorizarRoles(
   "SUPER_ADMIN",
-  "COORD_ADMINISTRATIVO",
   "COORD_ACADEMICO",
 );
 
