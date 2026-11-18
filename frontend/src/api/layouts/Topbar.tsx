@@ -1,4 +1,5 @@
 
+import { useEffect, useState } from "react";
 import {
   ChevronRight,
   LogOut,
@@ -8,6 +9,9 @@ import {
 
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../features/auth/useAuth";
+import { authService } from "../../features/auth/auth.service";
+import { extraerMensajeError } from "../apiError";
+import type { PerfilAutenticado } from "../../features/auth/auth.types";
 import { navigationConfig } from "../layouts/navigation.config";
 
 interface TopbarProps {
@@ -23,9 +27,40 @@ const roleLabels: Record<string, string> = {
 };
 
 export function Topbar({ onMenuClick }: TopbarProps) {
-  const { roles, activeRole, setActiveRole, logout } = useAuth();
+  const { token, roles, activeRole, setActiveRole, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [perfil, setPerfil] = useState<PerfilAutenticado | null>(null);
+  const [errorPerfil, setErrorPerfil] = useState("");
+  const [fotoNoDisponible, setFotoNoDisponible] = useState(false);
+
+  useEffect(() => {
+    setPerfil(null);
+    setErrorPerfil("");
+    if (!token) {
+      return;
+    }
+
+    let isMounted = true;
+    const cargarPerfil = async () => {
+      try {
+        setErrorPerfil("");
+        const response = await authService.obtenerPerfilActual();
+        if (isMounted) setPerfil(response.data);
+      } catch (requestError: unknown) {
+        if (isMounted) setErrorPerfil(extraerMensajeError(requestError));
+      }
+    };
+
+    void cargarPerfil();
+    return () => {
+      isMounted = false;
+    };
+  }, [token]);
+
+  useEffect(() => {
+    setFotoNoDisponible(false);
+  }, [perfil?.fotoPerfil]);
 
   const currentItem = navigationConfig
     .flatMap((section) => section.items)
@@ -74,14 +109,28 @@ export function Topbar({ onMenuClick }: TopbarProps) {
 
       {/* Usuario y sesión */}
       <div className="flex shrink-0 items-center gap-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-navy text-white">
-          <UserRound size={18} />
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-navy text-white">
+          {perfil?.fotoPerfil && !fotoNoDisponible ? (
+            <img
+              src={perfil.fotoPerfil}
+              alt={`Foto de ${perfil.nombre}`}
+              onError={() => setFotoNoDisponible(true)}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <UserRound size={18} />
+          )}
         </div>
 
         <div className="min-w-0 text-right">
-          <p className="hidden text-xs font-bold text-navy sm:block">
-            Usuario autenticado
+          <p className="max-w-[120px] truncate text-[10px] font-bold text-navy sm:max-w-48 sm:text-xs">
+            {perfil?.nombre ?? "Usuario autenticado"}
           </p>
+          {errorPerfil && (
+            <p role="alert" className="text-[10px] text-error" title={errorPerfil}>
+              No se pudo cargar el perfil
+            </p>
+          )}
 
           {roles.length > 1 ? (
             <label className="sr-only" htmlFor="active-role">

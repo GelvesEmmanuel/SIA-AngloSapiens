@@ -15,6 +15,8 @@ export interface Matricula {
   estadoPago: EstadoPagoMatricula;
   estadoMatricula: EstadoMatricula;
   observaciones: string | null;
+  motivoCambioGrupo: string | null;
+  motivoCancelacion: string | null;
   fechaFinalizacion: string | null;
   fechaMatricula: string;
   fechaCancelacion: string | null;
@@ -36,6 +38,11 @@ export interface MatriculaPayload {
 export type ActualizarMatriculaPayload = Partial<
   Omit<MatriculaPayload, "estudianteId" | "grupoId">
 >;
+
+export interface CambioGrupoMatriculaPayload {
+  grupoId: string;
+  motivo: string;
+}
 
 export interface FiltrosMatricula {
   estudianteId?: string;

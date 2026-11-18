@@ -1,0 +1,1 @@
+ALTER TABLE "matriculas" RENAME COLUMN "motivo_inactivacion" TO "motivo_cambiogrupo";

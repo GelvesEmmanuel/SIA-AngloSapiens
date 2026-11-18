@@ -2,6 +2,7 @@ import api from "../../api/axios";
 import type {
   ActualizarMatriculaPayload,
   ApiResponse,
+  CambioGrupoMatriculaPayload,
   EstadoMatricula,
   FiltrosMatricula,
   Matricula,
@@ -47,10 +48,22 @@ export const actualizarMatricula = async (
 export const cambiarEstadoMatricula = async (
   id: string,
   estado: Exclude<EstadoMatricula, "ACTIVA">,
+  motivoCancelacion?: string,
 ) => {
   const response = await api.patch<ApiResponse<Matricula>>(
     `${BASE_URL}/estado/${id}`,
-    { estado },
+    { estado, ...(motivoCancelacion ? { motivoCancelacion } : {}) },
+  );
+  return response.data;
+};
+
+export const cambiarGrupoMatricula = async (
+  id: string,
+  payload: CambioGrupoMatriculaPayload,
+) => {
+  const response = await api.patch<ApiResponse<Matricula>>(
+    `${BASE_URL}/cambiar-grupo/${id}`,
+    payload,
   );
   return response.data;
 };

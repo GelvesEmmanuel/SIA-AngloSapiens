@@ -16,6 +16,11 @@ export interface CrearMatricula {
   observaciones?: string | null;
 }
 
+export interface CambiarGrupoMatricula {
+  grupoId: string;
+  motivo: string;
+}
+
 export type ActualizarMatricula = Partial<
   Pick<
     CrearMatricula,

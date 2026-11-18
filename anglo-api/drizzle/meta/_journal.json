@@ -36,6 +36,27 @@
       "when": 1794608809622,
       "tag": "0004_low_sharon_carter",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1795031092686,
+      "tag": "0005_robust_hemingway",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1795031397541,
+      "tag": "0006_purple_chimera",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1795032593749,
+      "tag": "0007_unique_group_codes",
+      "breakpoints": true
     }
   ]
 }

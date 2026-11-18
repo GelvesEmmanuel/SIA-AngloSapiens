@@ -1,4 +1,5 @@
 import {
+  asc,
   and,
   desc,
   eq,
@@ -15,6 +16,7 @@ import {
   aulas,
   cursos,
   docentes,
+  estudiantes,
   grupos,
   horariosGrupos,
   matriculas,
@@ -210,11 +212,11 @@ const incluirHorarios = async (registros: (typeof grupos.$inferSelect)[]) => {
   }));
 };
 
-const siguienteCodigoGrupo = async (tx: Transaccion, periodoId: string) => {
+const siguienteCodigoGrupo = async (tx: Transaccion) => {
+  await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('grupos_codigo'))`);
   const registros = await tx
     .select({ codigo: grupos.codigo })
-    .from(grupos)
-    .where(eq(grupos.periodoId, periodoId));
+    .from(grupos);
   const mayorNumero = registros.reduce((mayor, { codigo }) => {
     const coincidencia = /^GRU-(\d+)$/.exec(codigo);
     return coincidencia ? Math.max(mayor, Number(coincidencia[1])) : mayor;
@@ -237,7 +239,7 @@ export const crearGrupo = async (
   db.transaction(async (tx) => {
     await validarReferencias(tx, datos);
     await validarConflictosHorario(tx, datos);
-    const codigo = await siguienteCodigoGrupo(tx, datos.periodoId);
+    const codigo = await siguienteCodigoGrupo(tx);
     const [grupo] = await tx
       .insert(grupos)
       .values({
@@ -275,8 +277,21 @@ export const crearGrupo = async (
 /** Lista grupos con horarios y filtros por periodo, curso, docente, aula o estado. */
 export const obtenerGrupos = async (
   filtros: FiltrosGrupo = {},
+  usuarioId?: string,
+  roles: string[] = [],
 ): Promise<GrupoConHorarios[]> => {
   const condiciones = [isNull(grupos.deletedAt)];
+  if (usuarioId && !roles.some((rol) => ["SUPER_ADMIN", "COORD_ACADEMICO"].includes(rol))) {
+    const [docente] = await db
+      .select({ id: docentes.id })
+      .from(docentes)
+      .where(and(eq(docentes.usuarioId, usuarioId ?? ""), isNull(docentes.deletedAt)))
+      .limit(1);
+    if (!docente) {
+      throw new AppError("El usuario no tiene un perfil docente asignado.", 403, "DOCENTE_NO_ASIGNADO");
+    }
+    condiciones.push(eq(grupos.docenteId, docente.id));
+  }
   if (filtros.periodoId) condiciones.push(eq(grupos.periodoId, filtros.periodoId));
   if (filtros.cursoId) condiciones.push(eq(grupos.cursoId, filtros.cursoId));
   if (filtros.docenteId) condiciones.push(eq(grupos.docenteId, filtros.docenteId));
@@ -291,14 +306,87 @@ export const obtenerGrupos = async (
 };
 
 /** Obtiene un grupo y todos sus horarios asociados. */
-export const obtenerGrupoPorId = async (id: string): Promise<GrupoConHorarios> => {
+export const obtenerGrupoPorId = async (
+  id: string,
+  usuarioId?: string,
+  roles: string[] = [],
+): Promise<GrupoConHorarios> => {
   const [grupo] = await db
     .select()
     .from(grupos)
     .where(and(eq(grupos.id, id), isNull(grupos.deletedAt)))
     .limit(1);
   if (!grupo) lanzarNoEncontrado("GRUPO");
+  if (usuarioId && !roles.some((rol) => ["SUPER_ADMIN", "COORD_ACADEMICO"].includes(rol))) {
+    const [docente] = await db
+      .select({ id: docentes.id })
+      .from(docentes)
+      .where(and(eq(docentes.usuarioId, usuarioId ?? ""), isNull(docentes.deletedAt)))
+      .limit(1);
+    if (!docente || grupo.docenteId !== docente.id) {
+      throw new AppError(
+        "Solo puede consultar sus grupos asignados.",
+        403,
+        "GRUPO_NO_ASIGNADO",
+      );
+    }
+  }
   return (await incluirHorarios([grupo]))[0];
+};
+
+/** Lista estudiantes con matrícula activa y limita a docentes a sus grupos asignados. */
+export const obtenerEstudiantesPorGrupo = async (
+  grupoId: string,
+  usuarioId: string,
+  roles: string[],
+) => {
+  const [grupo] = await db
+    .select({ id: grupos.id, docenteId: grupos.docenteId })
+    .from(grupos)
+    .where(and(eq(grupos.id, grupoId), isNull(grupos.deletedAt)))
+    .limit(1);
+  if (!grupo) lanzarNoEncontrado("GRUPO");
+
+  const puedeConsultarTodosLosGrupos = roles.some((rol) =>
+    ["SUPER_ADMIN", "COORD_ACADEMICO"].includes(rol),
+  );
+  if (!puedeConsultarTodosLosGrupos) {
+    const [docente] = await db
+      .select({ id: docentes.id })
+      .from(docentes)
+      .where(and(eq(docentes.usuarioId, usuarioId), isNull(docentes.deletedAt)))
+      .limit(1);
+    if (!docente || grupo.docenteId !== docente.id) {
+      throw new AppError(
+        "Solo puede consultar los estudiantes de sus grupos asignados.",
+        403,
+        "GRUPO_NO_ASIGNADO",
+      );
+    }
+  }
+
+  return db
+    .select({
+      matriculaId: matriculas.id,
+      fechaMatricula: matriculas.fechaMatricula,
+      estudiante: {
+        id: estudiantes.id,
+        codigo: estudiantes.codigo,
+        nombre: estudiantes.nombre,
+        apellidos: estudiantes.apellidos,
+        estado: estudiantes.estado,
+      },
+    })
+    .from(matriculas)
+    .innerJoin(estudiantes, eq(matriculas.estudianteId, estudiantes.id))
+    .where(
+      and(
+        eq(matriculas.grupoId, grupoId),
+        eq(matriculas.estadoMatricula, "ACTIVA"),
+        isNull(estudiantes.deletedAt),
+      ),
+    )
+    .orderBy(asc(estudiantes.apellidos), asc(estudiantes.nombre));
 };
 
 /** Edita los datos y horarios del grupo conservando el número de cupos ocupados. */

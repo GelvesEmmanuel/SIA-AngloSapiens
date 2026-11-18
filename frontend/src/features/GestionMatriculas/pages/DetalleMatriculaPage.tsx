@@ -5,6 +5,7 @@ import type {
   ActualizarMatriculaPayload,
   EstadoMatricula,
   EstadoPagoMatricula,
+  Matricula,
   TipoMatricula,
 } from "../matricula.types";
 
@@ -15,6 +16,7 @@ export function DetalleMatriculaPage() {
     matricula,
     estudiantes,
     grupos,
+    cursos,
     isLoading,
     isSubmitting,
     error,
@@ -22,8 +24,14 @@ export function DetalleMatriculaPage() {
     mensaje,
     ejecutarActualizar,
     ejecutarCambiarEstado,
-  } = useMatricula({ cargarListado: false, matriculaId: id });
+    ejecutarCambiarGrupo,
+  } = useMatricula({ cargarListado: false, matriculaId: id, cargarCursos: true });
   const [editando, setEditando] = useState(false);
+  const [cambiandoGrupo, setCambiandoGrupo] = useState(false);
+  const [cancelando, setCancelando] = useState(false);
+  const [grupoNuevoId, setGrupoNuevoId] = useState("");
+  const [motivoCambioGrupo, setMotivoCambioGrupo] = useState("");
+  const [motivoCancelacion, setMotivoCancelacion] = useState("");
 
   const guardarCambios = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -47,14 +55,41 @@ export function DetalleMatriculaPage() {
     if (actualizado) setEditando(false);
   };
 
-  const cambiarEstado = async (estado: Exclude<EstadoMatricula, "ACTIVA">) => {
-    if (!matricula) return;
-    const confirmado = window.confirm(
-      estado === "CANCELADA"
-        ? "¿Deseas cancelar esta matrícula? El cupo del grupo será liberado."
-        : "¿Deseas finalizar esta matrícula?",
+  const cambiarEstado = async (
+    estado: Exclude<EstadoMatricula, "ACTIVA">,
+  ): Promise<Matricula | null> => {
+    if (!matricula) return null;
+    if (estado === "FINALIZADA" && !window.confirm("¿Deseas finalizar esta matrícula?")) {
+      return null;
+    }
+    const actualizada = await ejecutarCambiarEstado(
+      matricula.id,
+      estado,
+      estado === "CANCELADA" ? motivoCancelacion.trim() : undefined,
     );
-    if (confirmado) await ejecutarCambiarEstado(matricula.id, estado);
+    if (actualizada && estado === "CANCELADA") setCancelando(false);
+    return actualizada;
+  };
+
+  const cambiarGrupo = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!matricula) return;
+    const actualizada = await ejecutarCambiarGrupo(matricula.id, {
+      grupoId: grupoNuevoId,
+      motivo: motivoCambioGrupo.trim(),
+    });
+    if (actualizada) {
+      setCambiandoGrupo(false);
+      setGrupoNuevoId("");
+      setMotivoCambioGrupo("");
+    }
+  };
+
+  const cancelarMatricula = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    void cambiarEstado("CANCELADA").then((actualizada) => {
+      if (actualizada) setMotivoCancelacion("");
+    });
   };
 
   if (isLoading) {
@@ -71,6 +106,22 @@ export function DetalleMatriculaPage() {
 
   const estudiante = estudiantes.find((item) => item.id === matricula.estudianteId);
   const grupo = grupos.find((item) => item.id === matricula.grupoId);
+  const curso = grupo
+    ? cursos.find((item) => item.id === grupo.cursoId)
+    : undefined;
+  const nombreCursoGrupo = (grupoId: string) => {
+    const grupoSeleccionado = grupos.find((item) => item.id === grupoId);
+    return grupoSeleccionado
+      ? cursos.find((item) => item.id === grupoSeleccionado.cursoId)?.nombre ??
+          "Curso no disponible"
+      : "Curso no disponible";
+  };
+  const gruposDisponibles = grupos.filter(
+    (item) =>
+      item.id !== matricula.grupoId &&
+      item.cuposDisponibles > 0 &&
+      (item.estado === "PROGRAMADO" || item.estado === "EN_CURSO"),
+  );
 
   return (
     <main className="mx-auto w-full max-w-4xl space-y-5 p-4 sm:p-6">
@@ -80,7 +131,11 @@ export function DetalleMatriculaPage() {
           <h1 className="page-title">
             {estudiante ? `${estudiante.nombre} ${estudiante.apellidos}` : "Detalle de matrícula"}
           </h1>
-          <p className="mt-2 text-sm text-muted">{grupo?.codigo ?? "Grupo no disponible"}</p>
+          <p className="mt-2 text-sm text-muted">
+            {grupo
+              ? `${grupo.codigo} · ${curso?.nombre ?? "Curso no disponible"}`
+              : "Grupo no disponible"}
+          </p>
         </div>
         <button type="button" onClick={() => navigate("/matriculas")} className="outline-btn">
           Volver al listado
@@ -150,21 +205,102 @@ export function DetalleMatriculaPage() {
             <div><p className="field-label">Modo de pago</p><p>{matricula.modoPago ?? "Sin definir"}</p></div>
             <div><p className="field-label">Valor acordado</p><p>{matricula.valorAcordado ?? "No definido"}</p></div>
             <div><p className="field-label">Descuento aplicado</p><p>{matricula.descuentoAplicado ?? "No definido"}</p></div>
+            {matricula.motivoCambioGrupo && <div className="sm:col-span-2"><p className="field-label">Motivo del cambio de grupo</p><p className="whitespace-pre-wrap">{matricula.motivoCambioGrupo}</p></div>}
+            {matricula.motivoCancelacion && <div className="sm:col-span-2"><p className="field-label">Motivo de cancelación</p><p className="whitespace-pre-wrap">{matricula.motivoCancelacion}</p></div>}
             {matricula.fechaCancelacion && <div><p className="field-label">Fecha de cancelación</p><p>{matricula.fechaCancelacion}</p></div>}
             {matricula.fechaFinalizacion && <div><p className="field-label">Fecha de finalización</p><p>{matricula.fechaFinalizacion}</p></div>}
             <div className="sm:col-span-2"><p className="field-label">Observaciones</p><p className="whitespace-pre-wrap">{matricula.observaciones || "Sin observaciones"}</p></div>
           </section>
 
           {matricula.estadoMatricula === "ACTIVA" && (
-            <div className="flex flex-wrap gap-3">
-              <button type="button" onClick={() => setEditando(true)} className="primary-btn">Editar datos</button>
-              <button type="button" onClick={() => void cambiarEstado("CANCELADA")} disabled={isSubmitting} className="outline-btn disabled:opacity-50">
-                Cancelar matrícula
-              </button>
-              <button type="button" onClick={() => void cambiarEstado("FINALIZADA")} disabled={isSubmitting} className="outline-btn disabled:opacity-50">
-                Finalizar matrícula
-              </button>
-            </div>
+            <>
+              <div className="flex flex-wrap gap-3">
+                <button type="button" onClick={() => setEditando(true)} className="primary-btn">Editar datos</button>
+                <button type="button" onClick={() => setCambiandoGrupo((actual) => !actual)} className="outline-btn">
+                  Cambiar grupo
+                </button>
+                <button type="button" onClick={() => setCancelando((actual) => !actual)} disabled={isSubmitting} className="outline-btn disabled:opacity-50">
+                  Cancelar matrícula
+                </button>
+                <button type="button" onClick={() => void cambiarEstado("FINALIZADA")} disabled={isSubmitting} className="outline-btn disabled:opacity-50">
+                  Finalizar matrícula
+                </button>
+              </div>
+
+              {cambiandoGrupo && (
+                <section className="card p-5 sm:p-6">
+                  <h2 className="section-title mb-4">Cambiar grupo</h2>
+                  <form onSubmit={cambiarGrupo} className="space-y-4">
+                    <div>
+                      <label htmlFor="matricula-grupo-nuevo" className="field-label">Nuevo grupo</label>
+                      <select
+                        id="matricula-grupo-nuevo"
+                        value={grupoNuevoId}
+                        onChange={(event) => setGrupoNuevoId(event.target.value)}
+                        required
+                        className="form-input"
+                      >
+                        <option value="">Selecciona un grupo con cupo disponible</option>
+                        {gruposDisponibles.map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.codigo} · {nombreCursoGrupo(item.id)} · {item.cuposDisponibles} cupos disponibles
+                          </option>
+                        ))}
+                      </select>
+                      {gruposDisponibles.length === 0 && (
+                        <p className="mt-1 text-xs text-muted">No hay otros grupos disponibles con cupo.</p>
+                      )}
+                    </div>
+                    <div>
+                      <label htmlFor="matricula-motivo-cambio" className="field-label">Motivo del cambio</label>
+                      <textarea
+                        id="matricula-motivo-cambio"
+                        value={motivoCambioGrupo}
+                        onChange={(event) => setMotivoCambioGrupo(event.target.value)}
+                        required
+                        rows={3}
+                        className="form-input"
+                      />
+                    </div>
+                    <div className="flex flex-wrap gap-3">
+                      <button type="submit" disabled={isSubmitting || !gruposDisponibles.length || !motivoCambioGrupo.trim()} className="primary-btn disabled:opacity-50">
+                        {isSubmitting ? "Cambiando..." : "Confirmar cambio"}
+                      </button>
+                      <button type="button" onClick={() => setCambiandoGrupo(false)} disabled={isSubmitting} className="outline-btn">
+                        Cerrar
+                      </button>
+                    </div>
+                  </form>
+                </section>
+              )}
+
+              {cancelando && (
+                <section className="card p-5 sm:p-6">
+                  <h2 className="section-title mb-4">Cancelar matrícula</h2>
+                  <form onSubmit={cancelarMatricula} className="space-y-4">
+                    <div>
+                      <label htmlFor="matricula-motivo-cancelacion" className="field-label">Motivo de cancelación</label>
+                      <textarea
+                        id="matricula-motivo-cancelacion"
+                        value={motivoCancelacion}
+                        onChange={(event) => setMotivoCancelacion(event.target.value)}
+                        required
+                        rows={3}
+                        className="form-input"
+                      />
+                    </div>
+                    <div className="flex flex-wrap gap-3">
+                      <button type="submit" disabled={isSubmitting || !motivoCancelacion.trim()} className="primary-btn disabled:opacity-50">
+                        {isSubmitting ? "Cancelando..." : "Confirmar cancelación"}
+                      </button>
+                      <button type="button" onClick={() => setCancelando(false)} disabled={isSubmitting} className="outline-btn">
+                        Volver
+                      </button>
+                    </div>
+                  </form>
+                </section>
+              )}
+            </>
           )}
         </>
       )}

@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 
 import { RequireAuth } from "./guards/RequireAuth";
 import { RequireRouteAccess } from "./guards/RequireRouteAccess";
+import { RequirePermission } from "./guards/RequirePermission";
 import { GuestOnlyRoute } from "./guards/GuestOnlyRoute";
 
 import LoginPage from "../features/auth/pages/LoginPage";
@@ -27,6 +28,9 @@ import { GestionAulasPage } from "../features/GestionAulas/pages/GestionAulasPag
 import { GestionMatriculasPage } from "../features/GestionMatriculas/pages/GestionMatriculasPage";
 import { RegistrarMatriculaPage } from "../features/GestionMatriculas/pages/RegistrarMatriculaPage";
 import { DetalleMatriculaPage } from "../features/GestionMatriculas/pages/DetalleMatriculaPage";
+import { GestionAcademicaLayout } from "../features/GestionAcademica/pages/GestionAcademicaLayout";
+import { GestionAcademicaInicioPage } from "../features/GestionAcademica/pages/GestionAcademicaInicioPage";
+import { FuncionalidadAcademicaPage } from "../features/GestionAcademica/pages/FuncionalidadAcademicaPage";
 export function AppRouter() {
   return (
     <Routes>
@@ -184,6 +188,62 @@ export function AppRouter() {
         <Route index element={<GestionMatriculasPage />} />
         <Route path="registrar" element={<RegistrarMatriculaPage />} />
         <Route path=":id" element={<DetalleMatriculaPage />} />
+      </Route>
+      <Route
+        path="/gestion-academica"
+        element={
+          <RequireAuth>
+            <RequireRouteAccess>
+              <DashboardLayout />
+            </RequireRouteAccess>
+          </RequireAuth>
+        }
+      >
+        <Route element={<GestionAcademicaLayout />}>
+          <Route index element={<GestionAcademicaInicioPage />} />
+          <Route element={<RequirePermission permission="groups:read_students" />}>
+            <Route
+              path="grupos/:id"
+              element={<DetalleGrupoPage returnPath="/gestion-academica" />}
+            />
+          </Route>
+          <Route
+            path="calificaciones"
+            element={
+              <FuncionalidadAcademicaPage
+                titulo="Mis calificaciones"
+                descripcion="Aquí podrás consultar las notas y el progreso de tus cursos."
+              />
+            }
+          />
+          <Route
+            path="historial"
+            element={
+              <FuncionalidadAcademicaPage
+                titulo="Historial académico"
+                descripcion="Aquí podrás revisar el historial de cursos y periodos académicos completados."
+              />
+            }
+          />
+          <Route
+            path="notas"
+            element={
+              <FuncionalidadAcademicaPage
+                titulo="Registro de notas"
+                descripcion="Próximamente podrás registrar y consultar las calificaciones de los estudiantes de tus grupos."
+              />
+            }
+          />
+          <Route
+            path="asistencias"
+            element={
+              <FuncionalidadAcademicaPage
+                titulo="Registro de asistencia"
+                descripcion="Próximamente podrás registrar y consultar la asistencia de los estudiantes de tus grupos."
+              />
+            }
+          />
+        </Route>
       </Route>
       <Route
         path="/periodos"

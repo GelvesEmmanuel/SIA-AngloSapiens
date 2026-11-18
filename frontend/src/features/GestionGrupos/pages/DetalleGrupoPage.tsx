@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useAuth } from "../../auth/useAuth";
 import { useGrupos } from "../hooks/useGrupos";
 import type { EstadoGrupo, GrupoPayload } from "../grupo.types";
 import { GrupoForm } from "./GrupoForm";
@@ -10,11 +11,18 @@ const estadosEditables: Exclude<EstadoGrupo, "CANCELADO">[] = [
   "FINALIZADO",
 ];
 
-export function DetalleGrupoPage() {
+interface DetalleGrupoPageProps {
+  returnPath?: string;
+}
+
+export function DetalleGrupoPage({ returnPath = "/grupos" }: DetalleGrupoPageProps) {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { activeRole } = useAuth();
+  const esDocente = activeRole === "DOCENTE";
   const {
     grupo,
+    estudiantesGrupo,
     periodos,
     cursos,
     docentes,
@@ -74,7 +82,7 @@ export function DetalleGrupoPage() {
     return (
       <main className="mx-auto max-w-4xl space-y-4 p-6">
         <p role="alert" className="rounded-lg bg-error-soft p-4 text-sm text-error">{error || "No se encontró el grupo."}</p>
-        <button type="button" onClick={() => navigate("/grupos")} className="outline-btn">Volver a grupos</button>
+        <button type="button" onClick={() => navigate(returnPath)} className="outline-btn">Volver a grupos</button>
       </main>
     );
   }
@@ -100,8 +108,18 @@ export function DetalleGrupoPage() {
   return (
     <main className="mx-auto w-full max-w-4xl space-y-5 p-4 sm:p-6">
       <header className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div><p className="eyebrow mb-1">Grupo {grupo.codigo}</p><h1 className="page-title">{editando ? "Editar grupo" : curso?.nombre ?? "Detalle del grupo"}</h1><p className="mt-2 text-sm text-muted">{periodo?.codigo} · {periodo?.nombre}</p></div>
-        <button type="button" onClick={() => navigate("/grupos")} className="outline-btn">Volver al listado</button>
+        <div>
+          <p className="eyebrow mb-1">Grupo {grupo.codigo}</p>
+          <h1 className="page-title">
+            {editando
+              ? "Editar grupo"
+              : esDocente
+                ? "Estudiantes matriculados"
+                : curso?.nombre ?? "Detalle del grupo"}
+          </h1>
+          {!esDocente && <p className="mt-2 text-sm text-muted">{periodo?.codigo} · {periodo?.nombre}</p>}
+        </div>
+        <button type="button" onClick={() => navigate(returnPath)} className="outline-btn">Volver al listado</button>
       </header>
 
       {errorAccion && <p role="alert" className="rounded-lg bg-error-soft p-4 text-sm text-error">{errorAccion}</p>}
@@ -124,9 +142,9 @@ export function DetalleGrupoPage() {
         <>
           <section className="card grid gap-4 p-5 sm:grid-cols-2 sm:p-6">
             <div><p className="field-label">Estado</p><p><span className={grupo.estado === "EN_CURSO" ? "badge badge-green" : grupo.estado === "CANCELADO" ? "badge badge-red" : "badge"}>{grupo.estado}</span></p></div>
-            <div><p className="field-label">Curso</p><p>{curso?.nombre ?? "No disponible"}</p></div>
+            {!esDocente && <><div><p className="field-label">Curso</p><p>{curso?.nombre ?? "No disponible"}</p></div>
             <div><p className="field-label">Docente</p><p>{docente ? `${docente.nombre} ${docente.apellidos}` : "Sin asignar"}</p></div>
-            <div><p className="field-label">Aula</p><p>{aula?.nombre ?? "Sin asignar"}</p></div>
+            <div><p className="field-label">Aula</p><p>{aula?.nombre ?? "Sin asignar"}</p></div></>}
             <div><p className="field-label">Cupos disponibles</p><p>{grupo.cuposDisponibles} de {grupo.cupoMaximo}</p></div>
             <div><p className="field-label">Fechas</p><p>{grupo.fechaInicio} — {grupo.fechaFin}</p></div>
             <div className="sm:col-span-2">
@@ -137,7 +155,42 @@ export function DetalleGrupoPage() {
             </div>
           </section>
 
-          <div className="flex flex-wrap gap-3">
+          <section className="card overflow-hidden">
+            <div className="border-b border-border p-5">
+              <h2 className="section-title">Estudiantes matriculados</h2>
+              <p className="mt-1 text-xs text-muted">
+                {estudiantesGrupo.length} {estudiantesGrupo.length === 1 ? "estudiante" : "estudiantes"} en este grupo.
+              </p>
+            </div>
+            {estudiantesGrupo.length === 0 ? (
+              <p className="p-5 text-sm text-muted">No hay estudiantes matriculados en este grupo.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[600px] text-left">
+                  <thead>
+                    <tr className="table-header">
+                      <th className="px-5 py-3">Código</th>
+                      <th className="px-5 py-3">Estudiante</th>
+                      <th className="px-5 py-3">Estado</th>
+                      <th className="px-5 py-3">Fecha de matrícula</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {estudiantesGrupo.map(({ matriculaId, fechaMatricula, estudiante }) => (
+                      <tr key={matriculaId}>
+                        <td className="px-5 py-4 text-sm font-medium text-navy">{estudiante.codigo}</td>
+                        <td className="px-5 py-4 text-sm text-body">{estudiante.nombre} {estudiante.apellidos}</td>
+                        <td className="px-5 py-4 text-sm text-body">{estudiante.estado}</td>
+                        <td className="px-5 py-4 text-sm text-body">{fechaMatricula}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+
+          {!esDocente && <div className="flex flex-wrap gap-3">
             <button type="button" onClick={() => setEditando(true)} disabled={grupo.estado === "CANCELADO"} className="primary-btn disabled:opacity-50">Editar grupo</button>
             {grupo.estado !== "CANCELADO" && (
               <form onSubmit={actualizarEstado} className="flex flex-wrap items-end gap-2">
@@ -145,9 +198,9 @@ export function DetalleGrupoPage() {
                 <button type="submit" disabled={isSubmitting} className="outline-btn">Actualizar estado</button>
               </form>
             )}
-          </div>
+          </div>}
 
-          {grupo.estado !== "CANCELADO" && grupo.estado !== "FINALIZADO" && (
+          {!esDocente && grupo.estado !== "CANCELADO" && grupo.estado !== "FINALIZADO" && (
             <section className="card p-5">
               <h2 className="section-title">Cambiar docente</h2>
               <form onSubmit={asignarDocente} className="mt-4 grid gap-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
@@ -158,7 +211,7 @@ export function DetalleGrupoPage() {
             </section>
           )}
 
-          {grupo.estado === "PROGRAMADO" && (
+          {!esDocente && grupo.estado === "PROGRAMADO" && (
             <section className="card p-5">
               <h2 className="section-title">Cancelar grupo</h2>
               <form onSubmit={cancelar} className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">

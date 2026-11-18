@@ -1,13 +1,19 @@
-import { useNavigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
+import { useAuth } from "../../auth/useAuth";
 import { useGrupos } from "../hooks/useGrupos";
 import type { GrupoPayload } from "../grupo.types";
 import { GrupoForm } from "./GrupoForm";
 
 export function RegistrarGrupoPage() {
   const navigate = useNavigate();
+  const { activeRole } = useAuth();
   const { isSubmitting, errorAccion, ejecutarRegistrar } = useGrupos({
     cargarListado: false,
   });
+
+  if (activeRole === "DOCENTE") {
+    return <Navigate to="/grupos" replace />;
+  }
 
   const registrar = async (payload: GrupoPayload) => {
     const grupo = await ejecutarRegistrar(payload);

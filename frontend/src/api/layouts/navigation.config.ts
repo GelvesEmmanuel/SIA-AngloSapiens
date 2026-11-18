@@ -82,6 +82,12 @@ export const navigationConfig: NavigationSection[] = [
     title: "GESTIÓN ACADÉMICA",
     items: [
       {
+        label: "Gestión académica",
+        path: "/gestion-academica",
+        icon: "BookOpen",
+        allowedRoles: ["ESTUDIANTE", "DOCENTE"],
+      },
+      {
         label: "Cursos",
         path: "/cursos",
         icon: "BookOpen",
@@ -98,7 +104,6 @@ export const navigationConfig: NavigationSection[] = [
         allowedRoles: [
           "SUPER_ADMIN",
           "COORD_ACADEMICO",
-          "COORD_ADMINISTRATIVO",
         ],
       },
       {

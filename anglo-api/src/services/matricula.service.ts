@@ -1,16 +1,18 @@
 import {
+  asc,
   and,
   desc,
   eq,
   gt,
+  inArray,
   isNull,
-  ne,
   sql,
 } from "drizzle-orm";
 import { db } from "../config/db.js";
 import { estudiantes, grupos, matriculas } from "../config/db/schema.js";
 import type {
   ActualizarMatricula,
+  CambiarGrupoMatricula,
   CrearMatricula,
   EstadoMatricula,
   FiltrosMatricula,
@@ -19,6 +21,19 @@ import { AppError } from "../utils/appError.utils.js";
 import { registrarAuditoria } from "./auditoriaSis.service.js";
 
 type Transaccion = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+const obtenerMotivoCancelacion = (motivo?: string) => {
+  const normalizado = motivo?.trim();
+  if (!normalizado) {
+    throw new AppError(
+      "El motivo de cancelación es obligatorio.",
+      400,
+      "MOTIVO_CANCELACION_REQUERIDO",
+      [{ field: "motivoCancelacion", message: "Este campo es obligatorio." }],
+    );
+  }
+  return normalizado;
+};
 
 const generarCodigoMatricula = async (tx: Transaccion) => {
   await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('matriculas_codigo'))`);
@@ -214,11 +229,138 @@ export const actualizarMatricula = async (
     return actualizada;
   });
 
+/** Traslada una matrícula activa y actualiza los cupos de ambos grupos atómicamente. */
+export const cambiarGrupoMatricula = async (
+  id: string,
+  datos: CambiarGrupoMatricula,
+  usuarioId: string,
+) =>
+  db.transaction(async (tx) => {
+    const motivo = datos.motivo.trim();
+    if (!motivo) {
+      throw new AppError(
+        "El motivo del cambio de grupo es obligatorio.",
+        400,
+        "MOTIVO_CAMBIO_GRUPO_REQUERIDO",
+        [{ field: "motivo", message: "Este campo es obligatorio." }],
+      );
+    }
+
+    const [actual] = await tx
+      .select()
+      .from(matriculas)
+      .where(eq(matriculas.id, id))
+      .limit(1)
+      .for("update");
+    if (!actual) {
+      throw new AppError("La matrícula especificada no existe.", 404, "MATRICULA_NO_ENCONTRADA");
+    }
+    if (actual.estadoMatricula !== "ACTIVA") {
+      throw new AppError(
+        "Solo se puede cambiar de grupo una matrícula activa.",
+        409,
+        "MATRICULA_NO_ACTIVA",
+      );
+    }
+    if (actual.grupoId === datos.grupoId) {
+      throw new AppError(
+        "La matrícula ya pertenece al grupo especificado.",
+        409,
+        "MISMO_GRUPO_MATRICULA",
+      );
+    }
+
+    const gruposBloqueados = await tx
+      .select()
+      .from(grupos)
+      .where(inArray(grupos.id, [actual.grupoId, datos.grupoId]))
+      .orderBy(asc(grupos.id))
+      .for("update");
+    const grupoAnterior = gruposBloqueados.find(({ id: grupoId }) => grupoId === actual.grupoId);
+    const grupoNuevo = gruposBloqueados.find(({ id: grupoId }) => grupoId === datos.grupoId);
+    if (!grupoNuevo || grupoNuevo.deletedAt !== null) {
+      throw new AppError("El grupo especificado no existe.", 404, "GRUPO_NO_ENCONTRADO");
+    }
+    if (grupoNuevo.estado !== "PROGRAMADO" && grupoNuevo.estado !== "EN_CURSO") {
+      throw new AppError(
+        "Solo se puede cambiar a grupos programados o en curso.",
+        409,
+        "GRUPO_NO_DISPONIBLE",
+      );
+    }
+    if (!grupoAnterior) {
+      throw new AppError("El grupo actual de la matrícula no existe.", 404, "GRUPO_NO_ENCONTRADO");
+    }
+
+    const [matriculaExistente] = await tx
+      .select({ id: matriculas.id })
+      .from(matriculas)
+      .where(
+        and(
+          eq(matriculas.estudianteId, actual.estudianteId),
+          eq(matriculas.grupoId, datos.grupoId),
+        ),
+      )
+      .limit(1);
+    if (matriculaExistente) {
+      throw new AppError(
+        "El estudiante ya tiene una matrícula registrada para este grupo.",
+        409,
+        "MATRICULA_DUPLICADA",
+      );
+    }
+
+    const [grupoConCupo] = await tx
+      .update(grupos)
+      .set({
+        cuposDisponibles: sql`${grupos.cuposDisponibles} - 1`,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(grupos.id, grupoNuevo.id), gt(grupos.cuposDisponibles, 0)))
+      .returning({ id: grupos.id });
+    if (!grupoConCupo) {
+      throw new AppError("El grupo no tiene cupos disponibles.", 409, "GRUPO_SIN_CUPOS");
+    }
+
+    await tx
+      .update(grupos)
+      .set({
+        cuposDisponibles: sql`LEAST(${grupos.cupoMaximo}, ${grupos.cuposDisponibles} + 1)`,
+        updatedAt: new Date(),
+      })
+      .where(eq(grupos.id, grupoAnterior.id));
+
+    const [actualizada] = await tx
+      .update(matriculas)
+      .set({
+        grupoId: grupoNuevo.id,
+        motivoCambioGrupo: motivo,
+        updatedAt: new Date(),
+      })
+      .where(eq(matriculas.id, id))
+      .returning();
+
+    await registrarAuditoria({
+      usuarioId,
+      tablaAfectada: "matriculas",
+      registroId: id,
+      accion: "UPDATE",
+      datosAntiguos: { grupoId: actual.grupoId },
+      datosNuevos: {
+        grupoId: actualizada.grupoId,
+        motivoCambioGrupo: actualizada.motivoCambioGrupo,
+      },
+      motivo: `Cambio de grupo de ${grupoAnterior.codigo} a ${grupoNuevo.codigo}: ${motivo}`,
+    });
+    return actualizada;
+  });
+
 /** Cancela o finaliza una matrícula activa y sincroniza cupos y estado del estudiante. */
 export const cambiarEstadoMatricula = async (
   id: string,
   estado: Exclude<EstadoMatricula, "ACTIVA">,
   usuarioId: string,
+  motivoCancelacion?: string,
 ) =>
   db.transaction(async (tx) => {
     const [actual] = await tx
@@ -237,10 +379,13 @@ export const cambiarEstadoMatricula = async (
         "MATRICULA_NO_ACTIVA",
       );
     }
-
     const datosEstado =
       estado === "CANCELADA"
-        ? { estadoMatricula: estado, fechaCancelacion: sql<string>`CURRENT_DATE` }
+        ? {
+            estadoMatricula: estado,
+            fechaCancelacion: sql<string>`CURRENT_DATE`,
+            motivoCancelacion: obtenerMotivoCancelacion(motivoCancelacion),
+          }
         : { estadoMatricula: estado, fechaFinalizacion: sql<string>`CURRENT_DATE` };
     const [actualizada] = await tx
       .update(matriculas)
@@ -258,18 +403,7 @@ export const cambiarEstadoMatricula = async (
         .where(and(eq(grupos.id, actual.grupoId), isNull(grupos.deletedAt)));
     }
 
-    const [otraMatriculaActiva] = await tx
-      .select({ id: matriculas.id })
-      .from(matriculas)
-      .where(
-        and(
-          eq(matriculas.estudianteId, actual.estudianteId),
-          eq(matriculas.estadoMatricula, "ACTIVA"),
-          ne(matriculas.id, id),
-        ),
-      )
-      .limit(1);
-    if (!otraMatriculaActiva) {
+    if (estado === "CANCELADA") {
       await tx
         .update(estudiantes)
         .set({ estado: "REGISTRADO", updatedAt: new Date() })
@@ -291,8 +425,12 @@ export const cambiarEstadoMatricula = async (
         estadoMatricula: actualizada.estadoMatricula,
         fechaCancelacion: actualizada.fechaCancelacion,
         fechaFinalizacion: actualizada.fechaFinalizacion,
+        motivoCancelacion: actualizada.motivoCancelacion,
       },
-      motivo: `Matrícula ${estado.toLowerCase()}`,
+      motivo:
+        estado === "CANCELADA"
+          ? `Matrícula cancelada: ${actualizada.motivoCancelacion}`
+          : `Matrícula ${estado.toLowerCase()}`,
     });
     return actualizada;
   });

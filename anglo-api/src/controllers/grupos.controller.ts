@@ -7,6 +7,7 @@ import {
   cambiarDocenteGrupo,
   cancelarGrupo,
   crearGrupo,
+  obtenerEstudiantesPorGrupo,
   obtenerGrupoPorId,
   obtenerGrupos,
 } from "../services/grupo.service.js";
@@ -48,7 +49,11 @@ export const listarGruposController = async (
   next: NextFunction,
 ) => {
   try {
-    const grupos = await obtenerGrupos(filtrosGrupoSchema.parse(req.query));
+    const grupos = await obtenerGrupos(
+      filtrosGrupoSchema.parse(req.query),
+      obtenerUsuarioId(req),
+      req.user?.roles ?? [],
+    );
     return res.status(200).json({ success: true, message: "Grupos listados exitosamente.", data: grupos });
   } catch (error) {
     return next(mapError(error));
@@ -62,8 +67,37 @@ export const obtenerGrupoPorIdController = async (
   next: NextFunction,
 ) => {
   try {
-    const grupo = await obtenerGrupoPorId(obtenerId(req));
+    const grupo = await obtenerGrupoPorId(
+      obtenerId(req),
+      obtenerUsuarioId(req),
+      req.user?.roles ?? [],
+    );
     return res.status(200).json({ success: true, message: "Grupo encontrado exitosamente.", data: grupo });
+  } catch (error) {
+    return next(mapError(error));
+  }
+};
+
+/** Lista estudiantes activos en el grupo para coordinación o su docente asignado. */
+export const listarEstudiantesPorGrupoController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    if (!req.user?.usuarioId) {
+      throw new AppError("No autorizado.", 401, "NO_AUTORIZADO");
+    }
+    const estudiantes = await obtenerEstudiantesPorGrupo(
+      obtenerId(req),
+      req.user.usuarioId,
+      req.user.roles,
+    );
+    return res.status(200).json({
+      success: true,
+      message: "Estudiantes del grupo listados exitosamente.",
+      data: estudiantes,
+    });
   } catch (error) {
     return next(mapError(error));
   }

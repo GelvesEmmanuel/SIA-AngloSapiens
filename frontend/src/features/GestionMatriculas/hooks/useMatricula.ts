@@ -2,10 +2,13 @@ import { useCallback, useEffect, useState } from "react";
 import { extraerMensajeError } from "../../../api/apiError";
 import { listarEstudiantes } from "../../GestionEstudiantes/gestionEstudiantes.service";
 import type { Estudiante } from "../../GestionEstudiantes/estudiantes.type";
+import { listarCursos } from "../../GestionCursos/curso.service";
+import type { Curso } from "../../GestionCursos/curso.types";
 import { listarGrupos } from "../../GestionGrupos/grupo.service";
 import type { Grupo } from "../../GestionGrupos/grupo.types";
 import {
   actualizarMatricula,
+  cambiarGrupoMatricula,
   cambiarEstadoMatricula,
   listarMatriculas,
   obtenerMatricula,
@@ -13,6 +16,7 @@ import {
 } from "../matricula.service";
 import type {
   ActualizarMatriculaPayload,
+  CambioGrupoMatriculaPayload,
   EstadoMatricula,
   FiltrosMatricula,
   Matricula,
@@ -22,16 +26,20 @@ import type {
 interface UseMatriculaOptions {
   cargarListado?: boolean;
   matriculaId?: string;
+  cargarCursos?: boolean;
 }
 
 export function useMatricula({
   cargarListado = true,
   matriculaId,
+  cargarCursos = false,
 }: UseMatriculaOptions = {}) {
   const [matriculas, setMatriculas] = useState<Matricula[]>([]);
   const [matricula, setMatricula] = useState<Matricula | null>(null);
   const [estudiantes, setEstudiantes] = useState<Estudiante[]>([]);
   const [grupos, setGrupos] = useState<Grupo[]>([]);
+  const [cursos, setCursos] = useState<Curso[]>([]);
+  const [isLoadingCursos, setIsLoadingCursos] = useState(cargarCursos);
   const [filtros, setFiltros] = useState<FiltrosMatricula>({});
   const [isLoadingCatalogos, setIsLoadingCatalogos] = useState(true);
   const [isLoadingListado, setIsLoadingListado] = useState(cargarListado);
@@ -70,6 +78,31 @@ export function useMatricula({
       isMounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!cargarCursos) {
+      setIsLoadingCursos(false);
+      return;
+    }
+
+    let isMounted = true;
+    const cargarCatalogoCursos = async () => {
+      try {
+        setIsLoadingCursos(true);
+        const response = await listarCursos();
+        if (isMounted) setCursos(response.data);
+      } catch (requestError: unknown) {
+        if (isMounted) setError(extraerMensajeError(requestError));
+      } finally {
+        if (isMounted) setIsLoadingCursos(false);
+      }
+    };
+
+    void cargarCatalogoCursos();
+    return () => {
+      isMounted = false;
+    };
+  }, [cargarCursos]);
 
   useEffect(() => {
     if (!cargarListado) {
@@ -164,16 +197,27 @@ export function useMatricula({
   const ejecutarCambiarEstado = (
     id: string,
     estado: Exclude<EstadoMatricula, "ACTIVA">,
-  ) => ejecutarMutacion(() => cambiarEstadoMatricula(id, estado));
+    motivoCancelacion?: string,
+  ) => ejecutarMutacion(() => cambiarEstadoMatricula(id, estado, motivoCancelacion));
+
+  const ejecutarCambiarGrupo = (
+    id: string,
+    payload: CambioGrupoMatriculaPayload,
+  ) => ejecutarMutacion(() => cambiarGrupoMatricula(id, payload));
 
   return {
     matriculas,
     matricula,
     estudiantes,
     grupos,
+    cursos,
     filtros,
     setFiltros,
-    isLoading: isLoadingCatalogos || isLoadingListado || isLoadingDetalle,
+    isLoading:
+      isLoadingCatalogos ||
+      isLoadingCursos ||
+      isLoadingListado ||
+      isLoadingDetalle,
     isSubmitting,
     error,
     errorAccion,
@@ -182,5 +226,6 @@ export function useMatricula({
     ejecutarRegistrar,
     ejecutarActualizar,
     ejecutarCambiarEstado,
+    ejecutarCambiarGrupo,
   };
 }

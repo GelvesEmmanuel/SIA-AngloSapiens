@@ -420,7 +420,7 @@ export const grupos = pgTable(
     deletedAt: timestamp("deleted_at", { mode: "date" }),
   },
   (table) => [
-    unique("uk_grupo_periodo").on(table.periodoId, table.codigo),
+    unique("uk_grupo_codigo").on(table.codigo),
     check(
       "chk_cupos",
       sql`${table.cuposDisponibles} >= 0 AND ${table.cuposDisponibles} <= ${table.cupoMaximo}`,
@@ -481,6 +481,8 @@ export const matriculas = pgTable(
     estadoPago: estadoPagoEnum("estado_pago").notNull().default("NO_PAGO"),
     estadoMatricula: estadoMatriculaEnum("estado_matricula").notNull().default("ACTIVA"),
     observaciones: text("observaciones"),
+    motivoCambioGrupo: text("motivo_cambiogrupo"),
+    motivoCancelacion: text("motivo_cancelacion"),
     fechaFinalizacion: date("fecha_finalizacion", { mode: "string" }),
     fechaMatricula: date("fecha_matricula", { mode: "string" }).notNull().default(sql`CURRENT_DATE`),
     fechaCancelacion: date("fecha_cancelacion", { mode: "string" }),

@@ -13,6 +13,7 @@ import gruposRoutes from './routes/grupos.routes.js'
 import periodosAcademicosRoutes from './routes/periodosAcademicos.routes.js'
 import aulasRoutes from './routes/aulas.routes.js'
 import matriculasRoutes from './routes/matriculas.routes.js'
+import gestionAcademicaRoutes from './routes/gestionAcademica.routes.js'
 import { errorHandler } from './middlewares/errorHandler.middleware.js';
 import { estudiantes } from './config/db/schema.js';
 const app = express();
@@ -35,5 +36,6 @@ app.use('/api/grupos', gruposRoutes)
 app.use('/api/periodos', periodosAcademicosRoutes)
 app.use('/api/aulas', aulasRoutes)
 app.use('/api/matriculas', matriculasRoutes)
+app.use('/api/gestion-academica', gestionAcademicaRoutes)
 app.use(errorHandler);
 export default app; // Exportas la instancia de express

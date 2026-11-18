@@ -64,6 +64,30 @@ export const loginController = async (
   }
 };
 
+export const obtenerPerfilActualController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    if (!req.user?.usuarioId) {
+      throw new AppError("No autorizado.", 401, "NO_AUTORIZADO");
+    }
+
+    const perfil = await AuthService.obtenerPerfil(
+      req.user.usuarioId,
+      req.user.roles,
+    );
+    return res.status(200).json({
+      success: true,
+      message: "Perfil obtenido exitosamente.",
+      data: perfil,
+    });
+  } catch (error: unknown) {
+    return next(mapAuthError(error));
+  }
+};
+
 export const cambiarContrasenaController = async (
   req: AuthRequest,
   res: Response,

@@ -3,6 +3,7 @@ import { ZodError, z } from "zod";
 import type { AuthRequest } from "../middlewares/auth.midleware.js";
 import {
   actualizarMatricula,
+  cambiarGrupoMatricula,
   cambiarEstadoMatricula,
   crearMatricula,
   obtenerMatriculaPorId,
@@ -11,6 +12,7 @@ import {
 import { AppError } from "../utils/appError.utils.js";
 import {
   actualizarMatriculaSchema,
+  cambiarGrupoMatriculaSchema,
   cambiarEstadoMatriculaSchema,
   crearMatriculaSchema,
   filtrosMatriculaSchema,
@@ -123,15 +125,39 @@ export const cambiarEstadoMatriculaController = async (
   next: NextFunction,
 ) => {
   try {
-    const { estado } = cambiarEstadoMatriculaSchema.parse(req.body);
+    const { estado, motivoCancelacion } = cambiarEstadoMatriculaSchema.parse(req.body);
     const matricula = await cambiarEstadoMatricula(
       obtenerId(req),
       estado,
       obtenerUsuarioId(req),
+      motivoCancelacion,
     );
     return res.status(200).json({
       success: true,
       message: `Matrícula ${estado.toLowerCase()} exitosamente.`,
+      data: matricula,
+    });
+  } catch (error) {
+    return next(mapError(error));
+  }
+};
+
+/** Cambia una matrícula activa a otro grupo disponible. */
+export const cambiarGrupoMatriculaController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const datos = cambiarGrupoMatriculaSchema.parse(req.body);
+    const matricula = await cambiarGrupoMatricula(
+      obtenerId(req),
+      datos,
+      obtenerUsuarioId(req),
+    );
+    return res.status(200).json({
+      success: true,
+      message: "Estudiante cambiado de grupo exitosamente.",
       data: matricula,
     });
   } catch (error) {

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   actualizarMatriculaController,
+  cambiarGrupoMatriculaController,
   cambiarEstadoMatriculaController,
   crearMatriculaController,
   listarMatriculasController,
@@ -18,5 +19,6 @@ router.get("/listar/:id", obtenerMatriculaPorIdController);
 router.post("/registrar", crearMatriculaController);
 router.patch("/actualizar/:id", actualizarMatriculaController);
 router.patch("/estado/:id", cambiarEstadoMatriculaController);
+router.patch("/cambiar-grupo/:id", cambiarGrupoMatriculaController);
 
 export default router;

@@ -23,6 +23,17 @@ export interface LoginData {
   requiereCambioContrasena: boolean;
 }
 
+export interface PerfilAutenticado {
+  nombre: string;
+  fotoPerfil: string | null;
+}
+
+export interface ApiResponse<T> {
+  success: boolean;
+  message: string;
+  data: T;
+}
+
 export interface LoginResponse {
   exito: boolean;
   mensaje: string;

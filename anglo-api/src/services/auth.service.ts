@@ -1,8 +1,16 @@
-import { eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import jwt from 'jsonwebtoken';
 import { db } from '../config/db.js' // Ajusta la ruta a tu instancia de Drizzle según tu estructura
-import { usuarioRoles, usuarios } from '../config/db/schema.js';
+import {
+  archivos,
+  coordinadores,
+  docentes,
+  estudiantes,
+  usuarioRoles,
+  usuarios,
+} from '../config/db/schema.js';
 import { compararPassword, encriptarPassword } from '../utils/security.utils.js';
+import { obtenerUrlFirmada } from './storage.service.js';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -57,6 +65,85 @@ export const AuthService = {
       requiereCambioContrasena: usuario.requiereCambioContrasena,
       roles,
     };
+  },
+
+  obtenerPerfil: async (usuarioId: string, roles: string[]) => {
+    const [usuario] = await db
+      .select({ username: usuarios.username })
+      .from(usuarios)
+      .where(eq(usuarios.usuarioId, usuarioId));
+    if (!usuario) {
+      throw new Error('Usuario no encontrado');
+    }
+
+    let nombre = usuario.username;
+    let entidad: { id: string; tipo: 'DOCENTE' | 'ESTUDIANTE' } | null = null;
+
+    if (roles.includes('DOCENTE')) {
+      const [docente] = await db
+        .select({ id: docentes.id, nombre: docentes.nombre, apellidos: docentes.apellidos })
+        .from(docentes)
+        .where(and(eq(docentes.usuarioId, usuarioId), isNull(docentes.deletedAt)))
+        .limit(1);
+      if (docente) {
+        nombre = `${docente.nombre} ${docente.apellidos}`;
+        entidad = { id: docente.id, tipo: 'DOCENTE' };
+      }
+    }
+
+    if (!entidad && roles.includes('ESTUDIANTE')) {
+      const [estudiante] = await db
+        .select({ id: estudiantes.id, nombre: estudiantes.nombre, apellidos: estudiantes.apellidos })
+        .from(estudiantes)
+        .where(and(eq(estudiantes.usuarioId, usuarioId), isNull(estudiantes.deletedAt)))
+        .limit(1);
+      if (estudiante) {
+        nombre = `${estudiante.nombre} ${estudiante.apellidos}`;
+        entidad = { id: estudiante.id, tipo: 'ESTUDIANTE' };
+      }
+    }
+
+    if (!entidad) {
+      const [coordinador] = await db
+        .select({
+          primerNombre: coordinadores.primerNombre,
+          segundoNombre: coordinadores.segundoNombre,
+          primerApellido: coordinadores.primerApellido,
+          segundoApellido: coordinadores.segundoApellido,
+        })
+        .from(coordinadores)
+        .where(eq(coordinadores.usuarioId, usuarioId))
+        .limit(1);
+      if (coordinador) {
+        nombre = [
+          coordinador.primerNombre,
+          coordinador.segundoNombre,
+          coordinador.primerApellido,
+          coordinador.segundoApellido,
+        ]
+          .filter(Boolean)
+          .join(' ');
+      }
+    }
+
+    let fotoPerfil: string | null = null;
+    if (entidad) {
+      const [foto] = await db
+        .select({ urlArchivo: archivos.urlArchivo })
+        .from(archivos)
+        .where(
+          and(
+            eq(archivos.entidadId, entidad.id),
+            eq(archivos.tipoEntidad, entidad.tipo),
+            eq(archivos.categoria, 'FOTO'),
+            eq(archivos.estado, 'VIGENTE'),
+          ),
+        )
+        .limit(1);
+      if (foto) fotoPerfil = await obtenerUrlFirmada(foto.urlArchivo, 3600);
+    }
+
+    return { nombre, fotoPerfil };
   },
 
   // RQF-SEG-04: Cambio Obligatorio o Voluntario de Contraseña

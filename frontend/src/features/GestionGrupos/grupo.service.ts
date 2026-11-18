@@ -1,5 +1,12 @@
 import api from "../../api/axios";
-import type { ApiResponse, EstadoGrupo, FiltrosGrupo, Grupo, GrupoPayload } from "./grupo.types";
+import type {
+  ApiResponse,
+  EstudianteMatriculadoGrupo,
+  EstadoGrupo,
+  FiltrosGrupo,
+  Grupo,
+  GrupoPayload,
+} from "./grupo.types";
 
 const BASE_URL = "/grupos";
 
@@ -10,6 +17,13 @@ export const listarGrupos = async (params: FiltrosGrupo = {}) => {
 
 export const obtenerGrupo = async (id: string) => {
   const response = await api.get<ApiResponse<Grupo>>(`${BASE_URL}/listar/${id}`);
+  return response.data;
+};
+
+export const listarEstudiantesPorGrupo = async (id: string) => {
+  const response = await api.get<ApiResponse<EstudianteMatriculadoGrupo[]>>(
+    `${BASE_URL}/listar/${id}/estudiantes`,
+  );
   return response.data;
 };
 

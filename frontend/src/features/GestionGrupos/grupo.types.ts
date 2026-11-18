@@ -30,6 +30,18 @@ export interface Grupo {
   horarios: HorarioGrupo[];
 }
 
+export interface EstudianteMatriculadoGrupo {
+  matriculaId: string;
+  fechaMatricula: string;
+  estudiante: {
+    id: string;
+    codigo: string;
+    nombre: string;
+    apellidos: string;
+    estado: string;
+  };
+}
+
 export interface GrupoPayload {
   periodoId: string;
   cursoId: string;

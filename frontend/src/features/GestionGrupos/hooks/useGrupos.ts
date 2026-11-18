@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { extraerMensajeError } from "../../../api/apiError";
+import { useAuth } from "../../auth/useAuth";
 import { listarAulas } from "../../GestionAulas/aula.service";
 import type { Aula } from "../../GestionAulas/aula.types";
 import { listarCursos } from "../../GestionCursos/curso.service";
@@ -13,12 +14,14 @@ import {
   cambiarDocenteGrupo,
   cambiarEstadoGrupo,
   cancelarGrupo,
+  listarEstudiantesPorGrupo,
   listarGrupos,
   obtenerGrupo,
   registrarGrupo,
 } from "../grupo.service";
 import type {
   EstadoGrupo,
+  EstudianteMatriculadoGrupo,
   FiltrosGrupo,
   Grupo,
   GrupoPayload,
@@ -30,8 +33,11 @@ interface UseGruposOptions {
 }
 
 export function useGrupos({ cargarListado = true, grupoId }: UseGruposOptions = {}) {
+  const { activeRole } = useAuth();
+  const esDocente = activeRole === "DOCENTE";
   const [grupos, setGrupos] = useState<Grupo[]>([]);
   const [grupo, setGrupo] = useState<Grupo | null>(null);
+  const [estudiantesGrupo, setEstudiantesGrupo] = useState<EstudianteMatriculadoGrupo[]>([]);
   const [periodos, setPeriodos] = useState<PeriodoAcademico[]>([]);
   const [cursos, setCursos] = useState<Curso[]>([]);
   const [docentes, setDocentes] = useState<Docente[]>([]);
@@ -49,7 +55,7 @@ export function useGrupos({ cargarListado = true, grupoId }: UseGruposOptions = 
   }, []);
 
   useEffect(() => {
-    const cargarCatalogos = cargarListado || Boolean(grupoId);
+    const cargarCatalogos = !esDocente && (cargarListado || Boolean(grupoId));
     if (!cargarListado && !grupoId) return;
 
     let isMounted = true;
@@ -57,12 +63,13 @@ export function useGrupos({ cargarListado = true, grupoId }: UseGruposOptions = 
       try {
         setIsLoading(true);
         setError("");
-        const [gruposResponse, catalogosResponse, grupoResponse] = await Promise.all([
+        const [gruposResponse, catalogosResponse, grupoResponse, estudiantesResponse] = await Promise.all([
           cargarListado ? listarGrupos(filtros) : Promise.resolve(undefined),
           cargarCatalogos
             ? Promise.all([listarPeriodos(), listarCursos(), listarDocentes(), listarAulas()])
             : Promise.resolve(undefined),
           grupoId ? obtenerGrupo(grupoId) : Promise.resolve(undefined),
+          grupoId ? listarEstudiantesPorGrupo(grupoId) : Promise.resolve(undefined),
         ]);
 
         if (!isMounted) return;
@@ -76,11 +83,13 @@ export function useGrupos({ cargarListado = true, grupoId }: UseGruposOptions = 
           setAulas(aulasResponse.data);
         }
         if (grupoResponse) setGrupo(grupoResponse.data);
+        if (estudiantesResponse) setEstudiantesGrupo(estudiantesResponse.data);
       } catch (requestError: unknown) {
         if (!isMounted) return;
         setError(extraerMensajeError(requestError));
         if (cargarListado) setGrupos([]);
         if (grupoId) setGrupo(null);
+        if (grupoId) setEstudiantesGrupo([]);
       } finally {
         if (isMounted) setIsLoading(false);
       }
@@ -90,7 +99,7 @@ export function useGrupos({ cargarListado = true, grupoId }: UseGruposOptions = 
     return () => {
       isMounted = false;
     };
-  }, [cargarListado, filtros, grupoId, reload]);
+  }, [activeRole, cargarListado, esDocente, filtros, grupoId, reload]);
 
   const ejecutarMutacion = async (
     request: () => Promise<{ data: Grupo; message: string }>,
@@ -133,6 +142,7 @@ export function useGrupos({ cargarListado = true, grupoId }: UseGruposOptions = 
   return {
     grupos,
     grupo,
+    estudiantesGrupo,
     periodos,
     cursos,
     docentes,
