@@ -1,6 +1,7 @@
 import { CalendarDays, Clock3, GraduationCap, UserRound } from "lucide-react";
-import { useMisGrupos } from "../hooks/useMisGrupos";
+import { useGruposAcademicos } from "../hooks/useGruposAcademicos";
 import type { GrupoMatriculado } from "../gestionAcademica.types";
+import { formatearNombreGrupo } from "../../GestionGrupos/grupo.formatters";
 
 const dias: Record<string, string> = {
   LUNES: "Lunes",
@@ -37,9 +38,9 @@ function CursoCard({ matricula }: { matricula: GrupoMatriculado }) {
               {grupo.estado.replace("_", " ")}
             </span>
           </div>
-          <h2 className="section-title">{grupo.curso.nombre}</h2>
+          <h2 className="section-title">{formatearNombreGrupo(grupo, grupo.curso.nombre)}</h2>
           <p className="mt-1 text-sm text-muted">
-            Nivel {grupo.curso.nivel} <span aria-hidden="true">·</span> Grupo {grupo.codigo}
+            Nivel {grupo.curso.nivel}
           </p>
         </div>
         <div className="rounded-lg bg-navy-soft px-3 py-2 text-sm font-semibold text-navy">
@@ -49,8 +50,12 @@ function CursoCard({ matricula }: { matricula: GrupoMatriculado }) {
 
       <div className="grid gap-5 p-5 md:grid-cols-2">
         <div className="space-y-3">
-          <p className="flex items-center gap-2 text-sm text-body">
+          <p className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted">
             <UserRound size={16} className="shrink-0 text-muted" />
+            Docente
+          </p>
+          <p className="flex items-center gap-2 text-sm text-body">
+            
             {docente}
           </p>
           <p className="flex items-center gap-2 text-sm text-body">
@@ -84,7 +89,13 @@ function CursoCard({ matricula }: { matricula: GrupoMatriculado }) {
 }
 
 export function MisCursosPage() {
-  const { grupos, isLoading, error, recargarGrupos } = useMisGrupos();
+  const {
+    gruposMatriculados,
+    isLoading,
+    error,
+    isAccessDenied,
+    recargarGrupos,
+  } = useGruposAcademicos();
 
   return (
     <section className="space-y-4">
@@ -98,7 +109,7 @@ export function MisCursosPage() {
         {!isLoading && !error && (
           <span className="inline-flex items-center gap-2 text-sm font-medium text-navy">
             <GraduationCap size={18} />
-            {grupos.length} {grupos.length === 1 ? "curso" : "cursos"}
+            {gruposMatriculados.length} {gruposMatriculados.length === 1 ? "curso" : "cursos"}
           </span>
         )}
       </div>
@@ -106,13 +117,15 @@ export function MisCursosPage() {
       {error && (
         <div role="alert" className="rounded-lg bg-error-soft p-4 text-sm text-error">
           <p>{error}</p>
-          <button
-            type="button"
-            onClick={recargarGrupos}
-            className="mt-2 font-semibold underline"
-          >
-            Intentar nuevamente
-          </button>
+          {!isAccessDenied && (
+            <button
+              type="button"
+              onClick={recargarGrupos}
+              className="mt-2 font-semibold underline"
+            >
+              Intentar nuevamente
+            </button>
+          )}
         </div>
       )}
 
@@ -120,7 +133,7 @@ export function MisCursosPage() {
         <div role="status" className="card p-8 text-center text-sm text-muted">
           Cargando tus cursos...
         </div>
-      ) : error ? null : grupos.length === 0 ? (
+      ) : error ? null : gruposMatriculados.length === 0 ? (
         <div className="card p-8 text-center">
           <GraduationCap size={32} className="mx-auto text-muted" />
           <p className="mt-3 font-semibold text-heading">Aún no tienes cursos matriculados</p>
@@ -130,7 +143,7 @@ export function MisCursosPage() {
         </div>
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">
-          {grupos.map((matricula) => (
+          {gruposMatriculados.map((matricula) => (
             <CursoCard key={matricula.matriculaId} matricula={matricula} />
           ))}
         </div>

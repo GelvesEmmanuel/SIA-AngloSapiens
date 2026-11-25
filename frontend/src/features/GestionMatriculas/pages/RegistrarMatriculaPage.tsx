@@ -7,12 +7,14 @@ import type {
   ModoPagoMatricula,
   TipoMatricula,
 } from "../matricula.types";
+import { formatearNombreGrupoConHorario } from "../../GestionGrupos/grupo.formatters";
 
 export function RegistrarMatriculaPage() {
   const navigate = useNavigate();
   const {
     estudiantes,
     grupos,
+    cursos,
     isLoading,
     isSubmitting,
     error,
@@ -109,7 +111,10 @@ export function RegistrarMatriculaPage() {
                   <option value="">Selecciona un grupo con cupo</option>
                   {gruposDisponibles.map((grupo) => (
                     <option key={grupo.id} value={grupo.id}>
-                      {grupo.codigo} · {grupo.cuposDisponibles} cupos disponibles
+                      {formatearNombreGrupoConHorario(
+                        grupo,
+                        cursos.find((curso) => curso.id === grupo.cursoId)?.nombre,
+                      )} · {grupo.cuposDisponibles} cupos disponibles
                     </option>
                   ))}
                 </select>

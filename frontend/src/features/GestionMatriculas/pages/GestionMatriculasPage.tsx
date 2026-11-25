@@ -4,6 +4,7 @@ import type {
   EstadoMatricula,
   EstadoPagoMatricula,
 } from "../matricula.types";
+import { formatearNombreGrupo } from "../../GestionGrupos/grupo.formatters";
 
 const estados: EstadoMatricula[] = ["ACTIVA", "CANCELADA", "FINALIZADA"];
 const estadosPago: EstadoPagoMatricula[] = ["PAGO", "NO_PAGO"];
@@ -14,6 +15,7 @@ export function GestionMatriculasPage() {
     matriculas,
     estudiantes,
     grupos,
+    cursos,
     filtros,
     setFiltros,
     isLoading,
@@ -27,8 +29,12 @@ export function GestionMatriculasPage() {
       ? `${estudiante.nombre} ${estudiante.apellidos}`
       : "Estudiante no disponible";
   };
-  const codigoGrupo = (id: string) =>
-    grupos.find((item) => item.id === id)?.codigo ?? "Grupo no disponible";
+  const nombreGrupo = (id: string) => {
+    const grupo = grupos.find((item) => item.id === id);
+    if (!grupo) return "Grupo no disponible";
+    const curso = cursos.find((item) => item.id === grupo.cursoId);
+    return formatearNombreGrupo(grupo, curso?.nombre);
+  };
 
   return (
     <main className="mx-auto w-full max-w-7xl space-y-5 p-4 sm:p-6">
@@ -113,7 +119,9 @@ export function GestionMatriculasPage() {
               >
                 <option value="">Todos</option>
                 {grupos.map((grupo) => (
-                  <option key={grupo.id} value={grupo.id}>{grupo.codigo}</option>
+                  <option key={grupo.id} value={grupo.id}>
+                    {formatearNombreGrupo(grupo, cursos.find((curso) => curso.id === grupo.cursoId)?.nombre)}
+                  </option>
                 ))}
               </select>
             </div>
@@ -189,7 +197,7 @@ export function GestionMatriculasPage() {
                 <tr key={matricula.id} className="transition hover:bg-surface-muted">
                   <td className="px-5 py-4 text-sm font-medium text-navy">{matricula.codigo}</td>
                   <td className="px-5 py-4 text-sm font-semibold text-heading">{nombreEstudiante(matricula.estudianteId)}</td>
-                  <td className="px-5 py-4 text-sm text-body">{codigoGrupo(matricula.grupoId)}</td>
+                  <td className="px-5 py-4 text-sm text-body">{nombreGrupo(matricula.grupoId)}</td>
                   <td className="px-5 py-4 text-sm text-body">{matricula.fechaMatricula}</td>
                   <td className="px-5 py-4 text-sm text-body">{matricula.estadoPago}</td>
                   <td className="px-5 py-4">

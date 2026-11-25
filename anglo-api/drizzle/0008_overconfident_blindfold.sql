@@ -1,0 +1,1 @@
+ALTER TABLE "asistencias" ADD COLUMN "motivo_inasistencia" text;

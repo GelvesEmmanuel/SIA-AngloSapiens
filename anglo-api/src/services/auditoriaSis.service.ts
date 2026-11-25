@@ -1,6 +1,7 @@
 // este servcie lo que hace procesa la funcion o helper para registrar la auditoria en el esquema auditoria sistema 
 import {db} from '../config/db.js'
 import {auditoriaSistema} from '../config/db/schema.js'
+type Transaccion = Parameters<Parameters<typeof db.transaction>[0]>[0];
 type AccionAuditoria = 'CREATE' | 'UPDATE' | 'CAMBIOESTADO' | 'LOGIN' | 'CAMBIO_CONTRASEÑA' | ' ESTADO_CAMBIADO';
 
 interface RegistrarAuditoriaParams{
@@ -12,9 +13,13 @@ interface RegistrarAuditoriaParams{
     datosNuevos?: any;
     motivo?: string;
 } 
-export const registrarAuditoria = async (params: RegistrarAuditoriaParams) => {
+export const registrarAuditoria = async (
+  params: RegistrarAuditoriaParams,
+  tx?: Transaccion,
+) => {
   try {
-    await db.insert(auditoriaSistema).values({
+    const conexion = tx ?? db;
+    await conexion.insert(auditoriaSistema).values({
       usuarioId: params.usuarioId,
       tablaAfectada: params.tablaAfectada,
       registroId: params.registroId,
@@ -24,6 +29,7 @@ export const registrarAuditoria = async (params: RegistrarAuditoriaParams) => {
       motivo: params.motivo ?? null,
     });
   } catch (error) {
+    if (tx) throw error;
     // La auditoría nunca debe tumbar la petición principal del usuario, 
     // pero es vital registrar el fallo en consola si llega a fallar.
     console.error('Error al registrar traza de auditoría:', error);

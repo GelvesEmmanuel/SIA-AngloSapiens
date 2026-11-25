@@ -31,6 +31,7 @@ import type {
 } from "../types/grupos.types.js";
 import { AppError } from "../utils/appError.utils.js";
 import { registrarAuditoria } from "./auditoriaSis.service.js";
+import { finalizarMatriculasDeGrupos } from "./matricula.service.js";
 
 type Transaccion = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -65,7 +66,8 @@ const validarReferencias = async (
     .select()
     .from(periodosAcademicos)
     .where(eq(periodosAcademicos.id, datos.periodoId))
-    .limit(1);
+    .limit(1)
+    .for("update");
   if (!periodo) lanzarNoEncontrado("PERIODO");
   if (periodo.estado !== "ACTIVO" && periodo.estado !== "PROGRAMADO") {
     throw new AppError(
@@ -505,41 +507,100 @@ export const cambiarEstadoGrupo = async (
   id: string,
   estado: EstadoGrupo,
   usuarioId: string,
-) => {
-  const actual = await obtenerGrupoPorId(id);
-  if (actual.estado === "CANCELADO") {
-    throw new AppError(
-      "Un grupo cancelado no se puede reactivar ni cambiar de estado.",
-      409,
-      "GRUPO_CANCELADO",
+) =>
+  db.transaction(async (tx) => {
+    const [referenciaGrupo] = await tx
+      .select({ periodoId: grupos.periodoId })
+      .from(grupos)
+      .where(and(eq(grupos.id, id), isNull(grupos.deletedAt)))
+      .limit(1);
+    if (!referenciaGrupo) lanzarNoEncontrado("GRUPO");
+
+    const [periodo] = await tx
+      .select({ estado: periodosAcademicos.estado })
+      .from(periodosAcademicos)
+      .where(eq(periodosAcademicos.id, referenciaGrupo.periodoId))
+      .limit(1)
+      .for("update");
+    if (!periodo) lanzarNoEncontrado("PERIODO");
+    const [actual] = await tx
+      .select()
+      .from(grupos)
+      .where(and(eq(grupos.id, id), isNull(grupos.deletedAt)))
+      .limit(1)
+      .for("update");
+    if (!actual) lanzarNoEncontrado("GRUPO");
+    if (actual.periodoId !== referenciaGrupo.periodoId) {
+      throw new AppError(
+        "El periodo del grupo cambió durante la operación; vuelva a consultar el grupo.",
+        409,
+        "GRUPO_MODIFICADO",
+      );
+    }
+    if (actual.estado === "CANCELADO") {
+      throw new AppError(
+        "Un grupo cancelado no se puede reactivar ni cambiar de estado.",
+        409,
+        "GRUPO_CANCELADO",
+      );
+    }
+    if (estado === "CANCELADO") {
+      throw new AppError(
+        "Use la operación de cancelación para cancelar un grupo.",
+        400,
+        "USE_CANCELAR_GRUPO",
+      );
+    }
+    if (estado === "PROGRAMADO" || estado === "EN_CURSO") {
+      if (!periodo || (periodo.estado !== "ACTIVO" && periodo.estado !== "PROGRAMADO")) {
+        throw new AppError(
+          "Solo se pueden programar o iniciar grupos en periodos activos o programados.",
+          409,
+          "PERIODO_NO_DISPONIBLE",
+        );
+      }
+    }
+
+    const [actualizado] = await tx
+      .update(grupos)
+      .set({ estado, updatedAt: new Date() })
+      .where(and(eq(grupos.id, id), eq(grupos.estado, actual.estado)))
+      .returning();
+    if (!actualizado) {
+      throw new AppError(
+        "El estado del grupo cambió durante la operación.",
+        409,
+        "ESTADO_GRUPO_MODIFICADO",
+      );
+    }
+
+    if (estado === "FINALIZADO") {
+      await finalizarMatriculasDeGrupos(
+        tx,
+        [id],
+        usuarioId,
+        `Finalización del grupo ${actual.codigo}`,
+      );
+    }
+
+    await registrarAuditoria(
+      {
+        usuarioId,
+        tablaAfectada: "grupos",
+        registroId: id,
+        accion: "UPDATE",
+        datosAntiguos: { estado: actual.estado },
+        datosNuevos: { estado: actualizado.estado },
+        motivo: `Cambio de estado del grupo a ${estado}`,
+      },
+      tx,
     );
-  }
-  if (estado === "CANCELADO") {
-    throw new AppError(
-      "Use la operación de cancelación para cancelar un grupo.",
-      400,
-      "USE_CANCELAR_GRUPO",
-    );
-  }
-  const [actualizado] = await db
-    .update(grupos)
-    .set({ estado, updatedAt: new Date() })
-    .where(and(eq(grupos.id, id), eq(grupos.estado, actual.estado)))
-    .returning();
-  if (!actualizado) {
-    throw new AppError("El estado del grupo cambió durante la operación.", 409, "ESTADO_GRUPO_MODIFICADO");
-  }
-  await registrarAuditoria({
-    usuarioId,
-    tablaAfectada: "grupos",
-    registroId: id,
-    accion: "UPDATE",
-    datosAntiguos: { estado: actual.estado },
-    datosNuevos: { estado: actualizado.estado },
-    motivo: `Cambio de estado del grupo a ${estado}`,
+    const horarios = await tx
+      .select()
+      .from(horariosGrupos)
+      .where(eq(horariosGrupos.grupoId, id));
+    return { ...actualizado, horarios };
   });
-  return { ...actualizado, horarios: actual.horarios };
-};
 
 /** Cancela definitivamente un grupo programado; no permite cancelar grupos en curso. */
 export const cancelarGrupo = async (

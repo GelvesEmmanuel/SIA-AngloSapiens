@@ -31,6 +31,11 @@ import { DetalleMatriculaPage } from "../features/GestionMatriculas/pages/Detall
 import { GestionAcademicaLayout } from "../features/GestionAcademica/pages/GestionAcademicaLayout";
 import { GestionAcademicaInicioPage } from "../features/GestionAcademica/pages/GestionAcademicaInicioPage";
 import { FuncionalidadAcademicaPage } from "../features/GestionAcademica/pages/FuncionalidadAcademicaPage";
+import { RegistroAsistenciaPage } from "../features/GestionAcademica/pages/RegistroAsistenciaPage";
+import { HistorialAsistenciasGrupo } from "../features/GestionAcademica/pages/HistorialAsistenciasGrupo";
+import { ConteoInasistenciasGrupoPage } from "../features/GestionAcademica/pages/ConteoInasistenciasGrupoPage";
+import { RegistroNotasPage } from "../features/GestionAcademica/pages/RegistroNotasPage";
+import { MisCalificacionesPage } from "../features/GestionAcademica/pages/MisCalificacionesPage";
 export function AppRouter() {
   return (
     <Routes>
@@ -206,15 +211,18 @@ export function AppRouter() {
               path="grupos/:id"
               element={<DetalleGrupoPage returnPath="/gestion-academica" />}
             />
+            <Route
+              path="grupos/:id/historial-inasistencias"
+              element={<HistorialAsistenciasGrupo />}
+            />
+            <Route
+              path="grupos/:id/conteo-inasistencias"
+              element={<ConteoInasistenciasGrupoPage />}
+            />
           </Route>
           <Route
             path="calificaciones"
-            element={
-              <FuncionalidadAcademicaPage
-                titulo="Mis calificaciones"
-                descripcion="Aquí podrás consultar las notas y el progreso de tus cursos."
-              />
-            }
+            element={<MisCalificacionesPage />}
           />
           <Route
             path="historial"
@@ -226,23 +234,13 @@ export function AppRouter() {
             }
           />
           <Route
-            path="notas"
-            element={
-              <FuncionalidadAcademicaPage
-                titulo="Registro de notas"
-                descripcion="Próximamente podrás registrar y consultar las calificaciones de los estudiantes de tus grupos."
-              />
-            }
-          />
-          <Route
-            path="asistencias"
-            element={
-              <FuncionalidadAcademicaPage
-                titulo="Registro de asistencia"
-                descripcion="Próximamente podrás registrar y consultar la asistencia de los estudiantes de tus grupos."
-              />
-            }
-          />
+            element={<RequirePermission permission="grades:create" />}
+          >
+            <Route path="notas" element={<RegistroNotasPage />} />
+          </Route>
+          <Route element={<RequirePermission permission="attendance:create" />}>
+            <Route path="asistencias" element={<RegistroAsistenciaPage />} />
+          </Route>
         </Route>
       </Route>
       <Route

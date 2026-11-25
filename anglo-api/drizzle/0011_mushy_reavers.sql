@@ -1,0 +1,1 @@
+ALTER TABLE "matriculas" ADD COLUMN "notas_publicadas" boolean DEFAULT false NOT NULL;

@@ -1,8 +1,15 @@
 import { useNavigate } from "react-router-dom";
-import { useGrupos } from "../../GestionGrupos/hooks/useGrupos";
+import { useGruposAcademicos } from "../hooks/useGruposAcademicos";
+import { formatearNombreGrupoConHorario } from "../../GestionGrupos/grupo.formatters";
 export function MisGruposDocentePage() {
   const navigate = useNavigate();
-  const { grupos, isLoading, error, recargarGrupos } = useGrupos();
+  const {
+    gruposDocente,
+    isLoading,
+    error,
+    isAccessDenied,
+    recargarGrupos,
+  } = useGruposAcademicos();
 
   return (
     <section className="space-y-4">
@@ -16,13 +23,15 @@ export function MisGruposDocentePage() {
       {error && (
         <div role="alert" className="rounded-lg bg-error-soft p-4 text-sm text-error">
           <p>{error}</p>
-          <button
-            type="button"
-            onClick={recargarGrupos}
-            className="mt-2 font-semibold underline"
-          >
-            Intentar nuevamente
-          </button>
+          {!isAccessDenied && (
+            <button
+              type="button"
+              onClick={recargarGrupos}
+              className="mt-2 font-semibold underline"
+            >
+              Intentar nuevamente
+            </button>
+          )}
         </div>
       )}
 
@@ -32,7 +41,7 @@ export function MisGruposDocentePage() {
             <h3 className="section-title">Grupos asignados</h3>
             <p className="mt-1 text-xs text-muted">
               {!isLoading && !error
-                ? `${grupos.length} ${grupos.length === 1 ? "grupo" : "grupos"}`
+                ? `${gruposDocente.length} ${gruposDocente.length === 1 ? "grupo" : "grupos"}`
                 : "Listado de tus grupos"}
             </p>
           </div>
@@ -50,9 +59,8 @@ export function MisGruposDocentePage() {
           <table className="w-full min-w-[650px] text-left">
             <thead>
               <tr className="table-header">
-                <th className="px-5 py-3">Código del grupo</th>
+                <th className="px-5 py-3">Curso / grupo</th>
                 <th className="px-5 py-3">Fechas</th>
-                <th className="px-5 py-3">Cupos</th>
                 <th className="px-5 py-3">Estado</th>
                 <th className="px-5 py-3 text-right">Acciones</th>
               </tr>
@@ -60,27 +68,27 @@ export function MisGruposDocentePage() {
             <tbody className="divide-y divide-border">
               {isLoading ? (
                 <tr>
-                  <td colSpan={5} role="status" className="px-5 py-12 text-center text-sm text-muted">
+                  <td colSpan={4} role="status" className="px-5 py-12 text-center text-sm text-muted">
                     Cargando tus grupos...
                   </td>
                 </tr>
-              ) : grupos.length === 0 ? (
+              ) : gruposDocente.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-5 py-12 text-center text-sm text-muted">
+                  <td colSpan={4} className="px-5 py-12 text-center text-sm text-muted">
                     {error ? "No se pudo cargar el listado." : "No tienes grupos asignados."}
                   </td>
                 </tr>
               ) : (
-                grupos.map((grupo) => (
+                gruposDocente.map((grupo) => (
                   <tr key={grupo.id} className="transition hover:bg-surface-muted">
                     <td className="px-5 py-4 text-sm font-semibold text-navy">
-                      {grupo.codigo}
+                      <p>{formatearNombreGrupoConHorario(grupo, grupo.curso.nombre)}</p>
+                      <p className="mt-1 text-xs font-normal text-muted">
+                        {grupo.periodo.codigo} · {grupo.periodo.nombre}
+                      </p>
                     </td>
                     <td className="px-5 py-4 text-sm text-body">
                       {grupo.fechaInicio} – {grupo.fechaFin}
-                    </td>
-                    <td className="px-5 py-4 text-sm text-body">
-                      {grupo.cuposDisponibles} / {grupo.cupoMaximo}
                     </td>
                     <td className="px-5 py-4">
                       <span
@@ -95,16 +103,40 @@ export function MisGruposDocentePage() {
                         {grupo.estado.replace("_", " ")}
                       </span>
                     </td>
-                    <td className="px-5 py-4 text-right">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          navigate(`/gestion-academica/grupos/${grupo.id}`)
-                        }
-                        className="primary-btn px-3 py-1.5 text-xs"
-                      >
-                        Ver estudiantes
-                      </button>
+                    <td className="px-5 py-4">
+                      <div className="flex flex-wrap justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            navigate(`/gestion-academica/grupos/${grupo.id}`)
+                          }
+                          className="primary-btn px-3 py-1.5 text-xs"
+                        >
+                          Ver estudiantes
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            navigate(
+                              `/gestion-academica/grupos/${grupo.id}/historial-inasistencias`,
+                            )
+                          }
+                          className="outline-btn px-3 py-1.5 text-xs"
+                        >
+                          Historial
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            navigate(
+                              `/gestion-academica/grupos/${grupo.id}/conteo-inasistencias`,
+                            )
+                          }
+                          className="outline-btn px-3 py-1.5 text-xs"
+                        >
+                          Conteo
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))

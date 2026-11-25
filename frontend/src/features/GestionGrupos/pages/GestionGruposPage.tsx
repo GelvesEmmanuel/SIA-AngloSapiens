@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/useAuth";
 import { useGrupos } from "../hooks/useGrupos";
 import type { EstadoGrupo } from "../grupo.types";
+import { formatearNombreGrupoConHorario } from "../grupo.formatters";
 
 const estados: EstadoGrupo[] = ["PROGRAMADO", "EN_CURSO", "FINALIZADO", "CANCELADO"];
 
@@ -73,11 +74,11 @@ export function GestionGruposPage() {
         {error && <div role="alert" className="m-4 rounded-lg bg-error-soft p-4 text-sm text-error"><p>{error}</p><button type="button" onClick={recargarGrupos} className="mt-2 font-semibold underline">Intentar nuevamente</button></div>}
         <div className="overflow-x-auto">
           <table className={`w-full ${esDocente ? "min-w-[600px]" : "min-w-[1050px]"} text-left`}>
-            <thead><tr className="table-header"><th className="px-5 py-3">Código</th>{!esDocente && <><th className="px-5 py-3">Curso / periodo</th><th className="px-5 py-3">Docente</th><th className="px-5 py-3">Aula</th></>}<th className="px-5 py-3">Cupos</th><th className="px-5 py-3">Estado</th><th className="px-5 py-3 text-right">Acciones</th></tr></thead>
+            <thead><tr className="table-header"><th className="px-5 py-3">Grupo</th>{!esDocente && <><th className="px-5 py-3">Curso / periodo</th><th className="px-5 py-3">Docente</th><th className="px-5 py-3">Aula</th></>}<th className="px-5 py-3">Cupos</th><th className="px-5 py-3">Estado</th><th className="px-5 py-3 text-right">Acciones</th></tr></thead>
             <tbody className="divide-y divide-border">
               {isLoading ? <tr><td colSpan={esDocente ? 4 : 7} className="px-5 py-12 text-center text-sm text-muted">Cargando grupos...</td></tr> : grupos.length === 0 ? <tr><td colSpan={esDocente ? 4 : 7} className="px-5 py-12 text-center text-sm text-muted">{error ? "No se pudo cargar el listado." : "No se encontraron grupos."}</td></tr> : grupos.map((grupo) => (
                 <tr key={grupo.id} className="transition hover:bg-surface-muted">
-                  <td className="px-5 py-4 text-sm font-medium text-navy">{grupo.codigo}</td>
+                  <td className="px-5 py-4 text-sm font-medium text-navy">{formatearNombreGrupoConHorario(grupo, nombreCurso(grupo.cursoId))}</td>
                   {!esDocente && <><td className="px-5 py-4"><p className="text-sm font-semibold text-heading">{nombreCurso(grupo.cursoId)}</p><p className="text-xs text-muted">{nombrePeriodo(grupo.periodoId)}</p></td>
                   <td className="px-5 py-4 text-sm text-body">{nombreDocente(grupo.docenteId)}</td>
                   <td className="px-5 py-4 text-sm text-body">{nombreAula(grupo.aulaId)}</td></>}

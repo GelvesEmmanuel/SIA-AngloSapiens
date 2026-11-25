@@ -1,18 +1,17 @@
-Este arhcivo contiene la guia de la forma en la que se debe de desarrollar los archivos, service, controller, routes, types , validators para la gestion de las matriculas
+Actúa como ingeniero backend senior en este proyecto (SIA académico con TypeScript, Drizzle ORM y PostgreSQL).
+Revisa y actualiza la lógica de estados en el backend (servicios/controladores) para períodos académicos, grupos y matrículas, manteniendo la consistencia con el resto del sistema, transacciones atómicas y auditoría:
 
-// 
-// Crea el servicio para el módulo de "matriculas".
-// E Schema.ts se encuentra la tabla de matriculas y sus enum
-// Debe incluir:
-// 1. Una función para matricular un estudiante a un grupo, validando:
-//    - Que el estudiante exista y esté en estado REGISTRADO.
-//    - Que el grupo exista y esté en estado "PROGRAMADO" o "EN_CURSO".
-//    - Que no exista ya una matrícula previa para ese estudiante en ese grupo (uk_estudiante_grupo).
-//    - (Opcional) Validar cupos máximos del grupo si aplica.
-//    - Restar un cupo al grupo donde se registra el estudiante.
-//    - Si la matricula es exitosa pasar el esatdo del estduiante a MATRICULADO
-//    - Codigo de matricula MAT-0000
-//2. Una función para cancelar o finalizar la matrícula, actualizando la "fecha_finalizacion" y el estado.
-//3. Las funciones para listar matriculas y listarMAtricula por indicador
-//4. Una funcion para editar campos no criticos
-// 3. Manejo de errores con la clase AppError y registro de auditoría con "registrarAuditoria".
+1. Finalizar un grupo:
+   - Cuando un grupo cambie a estado FINALIZADO, actualizar también todas sus matrículas que estén en estado ACTIVA a estado FINALIZADA (y setear fechaFinalizacion si no la tienen, usando la fecha actual o fechaFin del grupo según convenga).
+   - No sobrescribir matrículas CANCELADAS ni ya FINALIZADAS.
+   - Hacerlo dentro de una transacción y registrar auditoría.
+
+2. Finalización o desactivación MANUAL de un período académico:
+   - Antes de desactivar o finalizar manualmente un período, validar si tiene grupos asociados en estados activos/no finalizados (revisar estadoGrupoEnum, por ejemplo PROGRAMADO, EN_CURSO / ACTIVO, excluyendo FINALIZADO o CANCELADO/INACTIVO según corresponda).
+   - Si existen grupos en esos estados, rechazar la operación con un error controlado de negocio explicando que el período tiene grupos activos/programados/en curso.
+   - Si no tiene bloqueos y se finaliza manualmente, asegurar que los grupos/matrículas aplicables queden consistentes dentro de la transacción y auditados.
+
+3. Finalización de período POR FECHA / VENCIMIENTO (cierre automático o por fecha límite):
+   - Cuando un período finaliza por cumplimiento de fecha, finalizar el período, finalizar todos sus grupos asociados (que no estén ya finalizados/cancelados) y finalizar todas las matrículas ACTIVAS de esos grupos a FINALIZADA (con fechaFinalizacion), todo dentro de una transacción atómica y con auditoría.
+
+Revisa primero los archivos existentes de períodos, grupos, matrículas y auditoría para reutilizar sus helpers, tipos, enums y manejo de errores sin romper endpoints actuales.

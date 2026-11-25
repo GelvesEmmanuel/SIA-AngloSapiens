@@ -48,6 +48,67 @@ const generarCodigoMatricula = async (tx: Transaccion) => {
   return `MAT-${String(mayorNumero + 1).padStart(4, "0")}`;
 };
 
+/** Finaliza las matrículas activas de los grupos indicados dentro de la transacción. */
+export const finalizarMatriculasDeGrupos = async (
+  tx: Transaccion,
+  grupoIds: string[],
+  usuarioId: string,
+  motivo: string,
+) => {
+  if (grupoIds.length === 0) return 0;
+
+  const activas = await tx
+    .select()
+    .from(matriculas)
+    .where(
+      and(
+        inArray(matriculas.grupoId, grupoIds),
+        eq(matriculas.estadoMatricula, "ACTIVA"),
+      ),
+    )
+    .for("update");
+  if (activas.length === 0) return 0;
+
+  const actualizadas = await tx
+    .update(matriculas)
+    .set({
+      estadoMatricula: "FINALIZADA",
+      fechaFinalizacion: sql`COALESCE(${matriculas.fechaFinalizacion}, CURRENT_DATE)`,
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        inArray(matriculas.id, activas.map(({ id }) => id)),
+        eq(matriculas.estadoMatricula, "ACTIVA"),
+      ),
+    )
+    .returning();
+
+  for (const actualizada of actualizadas) {
+    const anterior = activas.find(({ id }) => id === actualizada.id);
+    await registrarAuditoria(
+      {
+        usuarioId,
+        tablaAfectada: "matriculas",
+        registroId: actualizada.id,
+        accion: "UPDATE",
+        datosAntiguos: {
+          estadoMatricula: anterior?.estadoMatricula,
+          fechaFinalizacion: anterior?.fechaFinalizacion,
+        },
+        datosNuevos: {
+          estadoMatricula: actualizada.estadoMatricula,
+          fechaFinalizacion: actualizada.fechaFinalizacion,
+        },
+        motivo,
+      },
+      tx,
+    );
+  }
+
+  return actualizadas.length;
+};
+
 /** Registra una matrícula, actualiza el estudiante y reserva un cupo atómicamente. */
 export const crearMatricula = async (datos: CrearMatricula, usuarioId: string) =>
   db.transaction(async (tx) => {

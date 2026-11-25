@@ -8,6 +8,7 @@ import type {
   Matricula,
   TipoMatricula,
 } from "../matricula.types";
+import { formatearNombreGrupo, formatearNombreGrupoConHorario } from "../../GestionGrupos/grupo.formatters";
 
 export function DetalleMatriculaPage() {
   const { id } = useParams<{ id: string }>();
@@ -133,7 +134,7 @@ export function DetalleMatriculaPage() {
           </h1>
           <p className="mt-2 text-sm text-muted">
             {grupo
-              ? `${grupo.codigo} · ${curso?.nombre ?? "Curso no disponible"}`
+              ? formatearNombreGrupo(grupo, curso?.nombre)
               : "Grupo no disponible"}
           </p>
         </div>
@@ -243,7 +244,7 @@ export function DetalleMatriculaPage() {
                         <option value="">Selecciona un grupo con cupo disponible</option>
                         {gruposDisponibles.map((item) => (
                           <option key={item.id} value={item.id}>
-                            {item.codigo} · {nombreCursoGrupo(item.id)} · {item.cuposDisponibles} cupos disponibles
+                            {formatearNombreGrupoConHorario(item, nombreCursoGrupo(item.id))} · {item.cuposDisponibles} cupos disponibles
                           </option>
                         ))}
                       </select>

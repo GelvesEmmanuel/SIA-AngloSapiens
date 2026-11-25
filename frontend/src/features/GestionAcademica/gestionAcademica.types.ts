@@ -45,6 +45,8 @@ export interface GrupoEstudiante {
   horarios: HorarioEstudiante[];
 }
 
+export type GrupoDocente = Omit<GrupoEstudiante, "docente">;
+
 export interface GrupoMatriculado {
   matriculaId: string;
   fechaMatricula: string;

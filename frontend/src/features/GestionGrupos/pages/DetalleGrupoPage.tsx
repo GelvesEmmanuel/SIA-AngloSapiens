@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../../auth/useAuth";
 import { useGrupos } from "../hooks/useGrupos";
 import type { EstadoGrupo, GrupoPayload } from "../grupo.types";
+import { formatearNombreGrupoConHorario } from "../grupo.formatters";
 import { GrupoForm } from "./GrupoForm";
 
 const estadosEditables: Exclude<EstadoGrupo, "CANCELADO">[] = [
@@ -109,7 +110,7 @@ export function DetalleGrupoPage({ returnPath = "/grupos" }: DetalleGrupoPagePro
     <main className="mx-auto w-full max-w-4xl space-y-5 p-4 sm:p-6">
       <header className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
         <div>
-          <p className="eyebrow mb-1">Grupo {grupo.codigo}</p>
+          <p className="eyebrow mb-1">{formatearNombreGrupoConHorario(grupo, curso?.nombre)}</p>
           <h1 className="page-title">
             {editando
               ? "Editar grupo"

@@ -15,6 +15,7 @@ import {
   index,
   unique,
   primaryKey,
+  foreignKey,
   check,
 } from "drizzle-orm/pg-core";
 
@@ -38,7 +39,10 @@ export const rolUsuarioEnum = pgEnum("rol_usuario", [
   "ESTUDIANTE",
 ]);
 
-export const estadoUsuarioEnum = pgEnum("estado_usuario", ["ACTIVO", "INACTIVO"]);
+export const estadoUsuarioEnum = pgEnum("estado_usuario", [
+  "ACTIVO",
+  "INACTIVO",
+]);
 
 export const estadoEstudianteEnum = pgEnum("estado_estudiante", [
   "PRE_REGISTRADO",
@@ -58,7 +62,10 @@ export const tipoContactoEnum = pgEnum("tipo_contacto", [
   "EMERGENCIA",
 ]);
 
-export const tipoEntidadEnum = pgEnum("tipo_entidad", ["ESTUDIANTE", "DOCENTE"]);
+export const tipoEntidadEnum = pgEnum("tipo_entidad", [
+  "ESTUDIANTE",
+  "DOCENTE",
+]);
 
 export const categoriaArchivoEnum = pgEnum("categoria_archivo", [
   "FOTO",
@@ -69,7 +76,10 @@ export const categoriaArchivoEnum = pgEnum("categoria_archivo", [
   "DISCAPACIDAD",
 ]);
 
-export const estadoArchivoEnum = pgEnum("estado_archivo", ["VIGENTE", "HISTORICO"]);
+export const estadoArchivoEnum = pgEnum("estado_archivo", [
+  "VIGENTE",
+  "HISTORICO",
+]);
 
 export const accionAuditoriaEnum = pgEnum("accion_auditoria", [
   "CREATE",
@@ -77,7 +87,14 @@ export const accionAuditoriaEnum = pgEnum("accion_auditoria", [
   "DELETE",
 ]);
 
-export const nivelMcerEnum = pgEnum("nivel_mcer", ["A1", "A2", "B1", "B2", "C1", "C2"]);
+export const nivelMcerEnum = pgEnum("nivel_mcer", [
+  "A1",
+  "A2",
+  "B1",
+  "B2",
+  "C1",
+  "C2",
+]);
 
 export const estadoCursoEnum = pgEnum("estado_curso", ["ACTIVO", "INACTIVO"]);
 
@@ -116,7 +133,10 @@ export const diaSemanaEnum = pgEnum("dia_semana", [
   "SABADO",
 ]);
 
-export const tipoMatriculaEnum = pgEnum("tipo_matricula", ["REGULAR", "EXTENSIVA"]);
+export const tipoMatriculaEnum = pgEnum("tipo_matricula", [
+  "REGULAR",
+  "EXTENSIVA",
+]);
 
 export const modoPagoEnum = pgEnum("modo_pago", ["CONTADO", "CUOTAS"]);
 
@@ -146,24 +166,20 @@ export const habilidadNotaEnum = pgEnum("habilidad_nota", [
 // -----------------------------------------------------------------------------
 // 1. SEGURIDAD
 // -----------------------------------------------------------------------------
-export const usuarios = pgTable(
-  "usuarios",
-  {
-    usuarioId: uuid("usuario_id")
-      .primaryKey()
-      .default(sql`uuid_generate_v4()`),
-    username: varchar("username", { length: 50 }).notNull().unique(),
-    contrasenaHash: varchar("contraseña_hash", { length: 255 }).notNull(),
-    estado: estadoUsuarioEnum("estado").notNull().default("ACTIVO"),
-    requiereCambioContrasena: boolean("requiere_cambio_contraseña")
-      .notNull()
-      .default(true),
-    versionToken: integer("versión_token").notNull().default(1),
-    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
-  },
-
-);
+export const usuarios = pgTable("usuarios", {
+  usuarioId: uuid("usuario_id")
+    .primaryKey()
+    .default(sql`uuid_generate_v4()`),
+  username: varchar("username", { length: 50 }).notNull().unique(),
+  contrasenaHash: varchar("contraseña_hash", { length: 255 }).notNull(),
+  estado: estadoUsuarioEnum("estado").notNull().default("ACTIVO"),
+  requiereCambioContrasena: boolean("requiere_cambio_contraseña")
+    .notNull()
+    .default(true),
+  versionToken: integer("versión_token").notNull().default(1),
+  createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
+});
 
 export const usuarioRoles = pgTable(
   "usuario_roles",
@@ -182,21 +198,22 @@ export const usuarioRoles = pgTable(
 
     createdAt: timestamp("created_at", {
       mode: "date",
-    }).notNull().defaultNow(),
+    })
+      .notNull()
+      .defaultNow(),
   },
   (table) => [
-    unique("uq_usuario_rol").on(
-      table.usuarioId,
-      table.rol
-    ),
+    unique("uq_usuario_rol").on(table.usuarioId, table.rol),
     index("idx_usuario_roles_usuario").on(table.usuarioId),
-  ]
+  ],
 );
 
 export const auditoriaSistema = pgTable(
   "auditoria_sistema",
   {
-    id: uuid("id").primaryKey().default(sql`uuid_generate_v4()`),
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`uuid_generate_v4()`),
     usuarioId: uuid("usuario_id")
       .notNull()
       .references(() => usuarios.usuarioId, { onDelete: "restrict" }),
@@ -208,9 +225,10 @@ export const auditoriaSistema = pgTable(
     motivo: text("motivo"),
     createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
   },
-  (table) => [index("idx_auditoria_tabla").on(table.tablaAfectada, table.registroId)],
+  (table) => [
+    index("idx_auditoria_tabla").on(table.tablaAfectada, table.registroId),
+  ],
 );
-
 
 // --------------------------------------------------------------------------
 //1.2 coordinadores esta creada para poder guardar los datos basicos del cordinador
@@ -218,22 +236,28 @@ export const auditoriaSistema = pgTable(
 export const coordinadores = pgTable(
   "coordinadores",
   {
-    id: uuid("id").primaryKey().default(sql`uuid_generate_v4()`),
-    usuarioId: uuid("usuario_id").unique().references(() => usuarios.usuarioId, {
-      onDelete: "set null",
-    }),
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`uuid_generate_v4()`),
+    usuarioId: uuid("usuario_id")
+      .unique()
+      .references(() => usuarios.usuarioId, {
+        onDelete: "set null",
+      }),
     primerNombre: varchar("primer_nombre", { length: 50 }).notNull(),
     segundoNombre: varchar("segundo_nombre", { length: 50 }),
     primerApellido: varchar("primer_apellido", { length: 50 }).notNull(),
     segundoApellido: varchar("segundo_apellido", { length: 50 }),
-    documentoIdentidad: varchar("documento_identidad", { length: 20 }).notNull().unique(),
+    documentoIdentidad: varchar("documento_identidad", { length: 20 })
+      .notNull()
+      .unique(),
     diaCumpleanos: integer("dia_cumpleanos").notNull(),
     createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
   },
   (table) => [
     index("idx_coordinadores_documento").on(table.documentoIdentidad),
-  ]
+  ],
 );
 
 // -----------------------------------------------------------------------------
@@ -242,22 +266,34 @@ export const coordinadores = pgTable(
 export const estudiantes = pgTable(
   "estudiantes",
   {
-    id: uuid("id").primaryKey().default(sql`uuid_generate_v4()`),
-    usuarioId: uuid("usuario_id").unique().references(() => usuarios.usuarioId, {
-      onDelete: "set null",
-    }),
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`uuid_generate_v4()`),
+    usuarioId: uuid("usuario_id")
+      .unique()
+      .references(() => usuarios.usuarioId, {
+        onDelete: "set null",
+      }),
     codigo: varchar("codigo", { length: 20 }).notNull().unique(),
     tipoDocumento: varchar("tipo_documento", { length: 30 }).notNull(),
-    numeroDocumento: varchar("numero_documento", { length: 20 }).notNull().unique(),
+    numeroDocumento: varchar("numero_documento", { length: 20 })
+      .notNull()
+      .unique(),
     nombre: varchar("nombre", { length: 100 }).notNull(),
     apellidos: varchar("apellidos", { length: 100 }).notNull(),
     fechaNacimiento: date("fecha_nacimiento", { mode: "string" }).notNull(),
     telefono: varchar("telefono", { length: 20 }),
     gradoAcademico: varchar("grado_academico", { length: 100 }),
     institucionEducativa: varchar("institucion_educativa", { length: 150 }),
-    reportaDiscapacidad: boolean("reporta_discapacidad").notNull().default(false),
-    terminosyCondiciones: boolean("terminos_y_condiciones").notNull().default(true),
-    consentimientoUsoImagen: boolean("consentimiento_de_uso_de_imagen").notNull().default(true),
+    reportaDiscapacidad: boolean("reporta_discapacidad")
+      .notNull()
+      .default(false),
+    terminosyCondiciones: boolean("terminos_y_condiciones")
+      .notNull()
+      .default(true),
+    consentimientoUsoImagen: boolean("consentimiento_de_uso_de_imagen")
+      .notNull()
+      .default(true),
     estado: estadoEstudianteEnum("estado").notNull().default("PRE_REGISTRADO"),
     motivoInactivacion: text("motivo_inactivacion"),
     createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
@@ -273,7 +309,9 @@ export const estudiantes = pgTable(
 );
 
 export const contactoEstudiante = pgTable("contacto_estudiante", {
-  id: uuid("id").primaryKey().default(sql`uuid_generate_v4()`),
+  id: uuid("id")
+    .primaryKey()
+    .default(sql`uuid_generate_v4()`),
   estudianteId: uuid("estudiante_id")
     .notNull()
     .references(() => estudiantes.id, { onDelete: "cascade" }),
@@ -296,21 +334,29 @@ export const contactoEstudiante = pgTable("contacto_estudiante", {
 export const docentes = pgTable(
   "docentes",
   {
-    id: uuid("id").primaryKey().default(sql`uuid_generate_v4()`),
-    usuarioId: uuid("usuario_id").unique().references(() => usuarios.usuarioId, {
-      onDelete: "set null",
-    }),
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`uuid_generate_v4()`),
+    usuarioId: uuid("usuario_id")
+      .unique()
+      .references(() => usuarios.usuarioId, {
+        onDelete: "set null",
+      }),
     codigo: varchar("codigo", { length: 20 }).notNull().unique(),
     tipoDocumento: varchar("tipo_documento", { length: 30 }).notNull(),
-    numeroDocumento: varchar("numero_documento", { length: 20 }).notNull().unique(),
+    numeroDocumento: varchar("numero_documento", { length: 20 })
+      .notNull()
+      .unique(),
     nombre: varchar("nombre", { length: 100 }).notNull(),
     apellidos: varchar("apellidos", { length: 100 }).notNull(),
     fechaNacimiento: date("fecha_nacimiento", { mode: "string" }).notNull(),
     telefono: varchar("telefono", { length: 20 }),
     correo: varchar("correo", { length: 255 }),
     formacionAcademica: varchar("formacion_academica", { length: 200 }),
-    experienciaLaboral: varchar("experiencia_laboral", {length: 200}),
-    reportaDiscapacidad: boolean("reporta_discapacidad").notNull().default(false),
+    experienciaLaboral: varchar("experiencia_laboral", { length: 200 }),
+    reportaDiscapacidad: boolean("reporta_discapacidad")
+      .notNull()
+      .default(false),
     estado: estadoDocenteEnum("estado").notNull().default("REGISTRADO"),
     motivoInactivacion: text("motivo_inactivacion"),
     fechaVinculacion: text("fecha_vinculacion"),
@@ -343,7 +389,9 @@ export const nivelesAutorizadosDocente = pgTable(
 export const archivos = pgTable(
   "archivos",
   {
-    id: uuid("id").primaryKey().default(sql`uuid_generate_v4()`),
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`uuid_generate_v4()`),
     entidadId: uuid("entidad_id").notNull(),
     tipoEntidad: tipoEntidadEnum("tipo_entidad").notNull(),
     categoria: categoriaArchivoEnum("categoria").notNull(),
@@ -352,14 +400,18 @@ export const archivos = pgTable(
     createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
   },
-  (table) => [index("idx_archivos_entidad").on(table.entidadId, table.tipoEntidad)],
+  (table) => [
+    index("idx_archivos_entidad").on(table.entidadId, table.tipoEntidad),
+  ],
 );
 
 // -----------------------------------------------------------------------------
 // 5. CURSOS Y GRUPOS
 // -----------------------------------------------------------------------------
 export const periodosAcademicos = pgTable("periodos_academicos", {
-  id: uuid("id").primaryKey().default(sql`uuid_generate_v4()`),
+  id: uuid("id")
+    .primaryKey()
+    .default(sql`uuid_generate_v4()`),
   codigo: varchar("codigo", { length: 20 }).notNull().unique(),
   nombre: varchar("nombre", { length: 100 }).notNull(),
   fechaInicio: date("fecha_inicio", { mode: "string" }).notNull(),
@@ -370,7 +422,9 @@ export const periodosAcademicos = pgTable("periodos_academicos", {
 });
 
 export const cursos = pgTable("cursos", {
-  id: uuid("id").primaryKey().default(sql`uuid_generate_v4()`),
+  id: uuid("id")
+    .primaryKey()
+    .default(sql`uuid_generate_v4()`),
   codigo: varchar("codigo", { length: 20 }).notNull().unique(),
   nombre: varchar("nombre", { length: 100 }).notNull(),
   nivel: nivelMcerEnum("nivel").notNull(),
@@ -394,20 +448,24 @@ export const habilidadesCurso = pgTable(
   (table) => [primaryKey({ columns: [table.cursoId, table.habilidad] })],
 );
 
-
-
 export const grupos = pgTable(
   "grupos",
   {
-    id: uuid("id").primaryKey().default(sql`uuid_generate_v4()`),
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`uuid_generate_v4()`),
     periodoId: uuid("periodo_id")
       .notNull()
       .references(() => periodosAcademicos.id, { onDelete: "restrict" }),
     cursoId: uuid("curso_id")
       .notNull()
       .references(() => cursos.id, { onDelete: "restrict" }),
-    docenteId: uuid("docente_id").references(() => docentes.id, { onDelete: "set null" }),
-    aulaId: uuid("aula_id").references(() => aulas.id, { onDelete: "set null" }),
+    docenteId: uuid("docente_id").references(() => docentes.id, {
+      onDelete: "set null",
+    }),
+    aulaId: uuid("aula_id").references(() => aulas.id, {
+      onDelete: "set null",
+    }),
     codigo: varchar("codigo", { length: 20 }).notNull(),
     cupoMaximo: integer("cupo_maximo").notNull(),
     cuposDisponibles: integer("cupos_disponibles").notNull(),
@@ -432,22 +490,23 @@ export const grupos = pgTable(
   ],
 );
 
-export const aulas = pgTable(
-  "aulas",
-  {
-    id: uuid("id").primaryKey().default(sql`uuid_generate_v4()`),
-    nombre: varchar("nombre", { length: 50 }).notNull().unique(), // Ej: "Aula 1", "Salón Londres", "Room 102"
-    activa: boolean("activa").notNull().default(true), // Para deshabilitarla temporalmente (mantenimiento, etc.)
-    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
-    deletedAt: timestamp("deleted_at", { mode: "date" }),
-  },
-);
+export const aulas = pgTable("aulas", {
+  id: uuid("id")
+    .primaryKey()
+    .default(sql`uuid_generate_v4()`),
+  nombre: varchar("nombre", { length: 50 }).notNull().unique(), // Ej: "Aula 1", "Salón Londres", "Room 102"
+  activa: boolean("activa").notNull().default(true), // Para deshabilitarla temporalmente (mantenimiento, etc.)
+  createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
+  deletedAt: timestamp("deleted_at", { mode: "date" }),
+});
 
 export const horariosGrupos = pgTable(
   "horarios_grupos",
   {
-    id: uuid("id").primaryKey().default(sql`uuid_generate_v4()`),
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`uuid_generate_v4()`),
     grupoId: uuid("grupo_id")
       .notNull()
       .references(() => grupos.id, { onDelete: "cascade" }),
@@ -466,7 +525,9 @@ export const horariosGrupos = pgTable(
 export const matriculas = pgTable(
   "matriculas",
   {
-    id: uuid("id").primaryKey().default(sql`uuid_generate_v4()`),
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`uuid_generate_v4()`),
     estudianteId: uuid("estudiante_id")
       .notNull()
       .references(() => estudiantes.id, { onDelete: "restrict" }),
@@ -474,17 +535,29 @@ export const matriculas = pgTable(
       .notNull()
       .references(() => grupos.id, { onDelete: "restrict" }),
     codigo: varchar("codigo", { length: 30 }).notNull().unique(),
-    tipoMatricula: tipoMatriculaEnum("tipo_matricula").notNull().default("REGULAR"),
+    tipoMatricula: tipoMatriculaEnum("tipo_matricula")
+      .notNull()
+      .default("REGULAR"),
     valorAcordado: numeric("valor_acordado", { precision: 12, scale: 2 }),
-    descuentoAplicado: numeric("descuento_aplicado", { precision: 12, scale: 2 }).default("0"),
+    descuentoAplicado: numeric("descuento_aplicado", {
+      precision: 12,
+      scale: 2,
+    }).default("0"),
     modoPago: modoPagoEnum("modo_pago"),
     estadoPago: estadoPagoEnum("estado_pago").notNull().default("NO_PAGO"),
-    estadoMatricula: estadoMatriculaEnum("estado_matricula").notNull().default("ACTIVA"),
+    estadoMatricula: estadoMatriculaEnum("estado_matricula")
+      .notNull()
+      .default("ACTIVA"),
     observaciones: text("observaciones"),
     motivoCambioGrupo: text("motivo_cambiogrupo"),
     motivoCancelacion: text("motivo_cancelacion"),
+    notasPublicadas: boolean("notas_publicadas").notNull().default(false),
+    notaExamenFinal: numeric("nota_examen_final", { precision: 3, scale: 1 }),
+    notaFinal: numeric("nota_final", { precision: 3, scale: 1 }),
     fechaFinalizacion: date("fecha_finalizacion", { mode: "string" }),
-    fechaMatricula: date("fecha_matricula", { mode: "string" }).notNull().default(sql`CURRENT_DATE`),
+    fechaMatricula: date("fecha_matricula", { mode: "string" })
+      .notNull()
+      .default(sql`CURRENT_DATE`),
     fechaCancelacion: date("fecha_cancelacion", { mode: "string" }),
     createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
@@ -493,6 +566,14 @@ export const matriculas = pgTable(
     unique("uk_estudiante_grupo").on(table.estudianteId, table.grupoId),
     index("idx_matriculas_estudiante").on(table.estudianteId),
     index("idx_matriculas_grupo").on(table.grupoId),
+    check(
+      "chk_matricula_examen_final_rango",
+      sql`${table.notaExamenFinal} IS NULL OR (${table.notaExamenFinal} >= 0.0 AND ${table.notaExamenFinal} <= 5.0)`,
+    ),
+    check(
+      "chk_matricula_nota_final_rango",
+      sql`${table.notaFinal} IS NULL OR (${table.notaFinal} >= 0.0 AND ${table.notaFinal} <= 5.0)`,
+    ),
   ],
 );
 
@@ -502,7 +583,9 @@ export const matriculas = pgTable(
 export const sesionesClase = pgTable(
   "sesiones_clase",
   {
-    id: uuid("id").primaryKey().default(sql`uuid_generate_v4()`),
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`uuid_generate_v4()`),
     grupoId: uuid("grupo_id")
       .notNull()
       .references(() => grupos.id, { onDelete: "cascade" }),
@@ -514,7 +597,9 @@ export const sesionesClase = pgTable(
 export const asistencias = pgTable(
   "asistencias",
   {
-    id: uuid("id").primaryKey().default(sql`uuid_generate_v4()`),
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`uuid_generate_v4()`),
     sesionId: uuid("sesion_id")
       .notNull()
       .references(() => sesionesClase.id, { onDelete: "cascade" }),
@@ -522,26 +607,42 @@ export const asistencias = pgTable(
       .notNull()
       .references(() => estudiantes.id, { onDelete: "restrict" }),
     estado: estadoAsistenciaEnum("estado").notNull().default("AUSENTE"),
+    motivoInasistencia: text("motivo_inasistencia"),
     createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
   },
-  (table) => [unique("uk_asistencia_sesion").on(table.sesionId, table.estudianteId)],
+  (table) => [
+    unique("uk_asistencia_sesion").on(table.sesionId, table.estudianteId),
+  ],
 );
 
 export const notas = pgTable(
   "notas",
   {
-    id: uuid("id").primaryKey().default(sql`uuid_generate_v4()`),
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`uuid_generate_v4()`),
     matriculaId: uuid("matricula_id")
       .notNull()
       .references(() => matriculas.id, { onDelete: "cascade" }),
-    habilidad: habilidadNotaEnum("habilidad").notNull(),
+    cursoId: uuid("curso_id")
+      .notNull()
+      .references(() => cursos.id, { onDelete: "restrict" }),
+    habilidad: habilidadEnum("habilidad").notNull(),
     nota: numeric("nota", { precision: 3, scale: 1 }).notNull(),
     createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
   },
   (table) => [
     unique("uk_nota_habilidad").on(table.matriculaId, table.habilidad),
+    index("idx_notas_matricula").on(table.matriculaId),
     check("chk_nota_rango", sql`${table.nota} >= 0.0 AND ${table.nota} <= 5.0`),
+    foreignKey({
+      columns: [table.cursoId, table.habilidad],
+      foreignColumns: [habilidadesCurso.cursoId, habilidadesCurso.habilidad],
+      name: "fk_nota_habilidad_curso",
+    })
+      .onUpdate("cascade")
+      .onDelete("restrict"),
   ],
 );

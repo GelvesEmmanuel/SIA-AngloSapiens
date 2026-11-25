@@ -32,7 +32,7 @@ interface UseMatriculaOptions {
 export function useMatricula({
   cargarListado = true,
   matriculaId,
-  cargarCursos = false,
+  cargarCursos = true,
 }: UseMatriculaOptions = {}) {
   const [matriculas, setMatriculas] = useState<Matricula[]>([]);
   const [matricula, setMatricula] = useState<Matricula | null>(null);

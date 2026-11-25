@@ -9,6 +9,8 @@ import { listarDocentes } from "../../GestionDocentes/gestionDocente.service";
 import type { Docente } from "../../GestionDocentes/docente.types";
 import { listarPeriodos } from "../../GestionPeriodos/periodo.service";
 import type { PeriodoAcademico } from "../../GestionPeriodos/periodo.types";
+import { listarGruposAsignadosDocente } from "../../GestionAcademica/gestionAcademica.service";
+import type { GrupoDocente } from "../../GestionAcademica/gestionAcademica.types";
 import {
   actualizarGrupo,
   cambiarDocenteGrupo,
@@ -36,6 +38,7 @@ export function useGrupos({ cargarListado = true, grupoId }: UseGruposOptions = 
   const { activeRole } = useAuth();
   const esDocente = activeRole === "DOCENTE";
   const [grupos, setGrupos] = useState<Grupo[]>([]);
+  const [gruposDocente, setGruposDocente] = useState<GrupoDocente[]>([]);
   const [grupo, setGrupo] = useState<Grupo | null>(null);
   const [estudiantesGrupo, setEstudiantesGrupo] = useState<EstudianteMatriculadoGrupo[]>([]);
   const [periodos, setPeriodos] = useState<PeriodoAcademico[]>([]);
@@ -56,6 +59,7 @@ export function useGrupos({ cargarListado = true, grupoId }: UseGruposOptions = 
 
   useEffect(() => {
     const cargarCatalogos = !esDocente && (cargarListado || Boolean(grupoId));
+    const cargarCursos = !esDocente && (cargarListado || Boolean(grupoId));
     if (!cargarListado && !grupoId) return;
 
     let isMounted = true;
@@ -63,22 +67,31 @@ export function useGrupos({ cargarListado = true, grupoId }: UseGruposOptions = 
       try {
         setIsLoading(true);
         setError("");
-        const [gruposResponse, catalogosResponse, grupoResponse, estudiantesResponse] = await Promise.all([
+        if (cargarListado && esDocente) {
+          const gruposResponse = await listarGruposAsignadosDocente();
+          if (!isMounted) return;
+          setGruposDocente(gruposResponse.data);
+          setGrupos([]);
+          return;
+        }
+
+        const [gruposResponse, catalogosResponse, cursosResponse, grupoResponse, estudiantesResponse] = await Promise.all([
           cargarListado ? listarGrupos(filtros) : Promise.resolve(undefined),
           cargarCatalogos
-            ? Promise.all([listarPeriodos(), listarCursos(), listarDocentes(), listarAulas()])
+            ? Promise.all([listarPeriodos(), listarDocentes(), listarAulas()])
             : Promise.resolve(undefined),
+          cargarCursos ? listarCursos() : Promise.resolve(undefined),
           grupoId ? obtenerGrupo(grupoId) : Promise.resolve(undefined),
           grupoId ? listarEstudiantesPorGrupo(grupoId) : Promise.resolve(undefined),
         ]);
 
         if (!isMounted) return;
         if (gruposResponse) setGrupos(gruposResponse.data);
+        setGruposDocente([]);
+        if (cursosResponse) setCursos(cursosResponse.data);
         if (catalogosResponse) {
-          const [periodosResponse, cursosResponse, docentesResponse, aulasResponse] =
-            catalogosResponse;
+          const [periodosResponse, docentesResponse, aulasResponse] = catalogosResponse;
           setPeriodos(periodosResponse.data);
-          setCursos(cursosResponse.data);
           setDocentes(docentesResponse.data);
           setAulas(aulasResponse.data);
         }
@@ -87,7 +100,10 @@ export function useGrupos({ cargarListado = true, grupoId }: UseGruposOptions = 
       } catch (requestError: unknown) {
         if (!isMounted) return;
         setError(extraerMensajeError(requestError));
-        if (cargarListado) setGrupos([]);
+        if (cargarListado) {
+          setGrupos([]);
+          setGruposDocente([]);
+        }
         if (grupoId) setGrupo(null);
         if (grupoId) setEstudiantesGrupo([]);
       } finally {
@@ -141,6 +157,7 @@ export function useGrupos({ cargarListado = true, grupoId }: UseGruposOptions = 
 
   return {
     grupos,
+    gruposDocente,
     grupo,
     estudiantesGrupo,
     periodos,

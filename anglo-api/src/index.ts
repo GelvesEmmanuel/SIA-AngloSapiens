@@ -9,9 +9,13 @@ const INTERVALO_FINALIZACION_MS = 60 * 60 * 1000;
 const finalizarPeriodosVencidos = async () => {
   try {
     const resultado = await finalizarPeriodosAcademicosVencidos();
-    if (resultado.periodosFinalizados || resultado.gruposFinalizados) {
+    if (
+      resultado.periodosFinalizados ||
+      resultado.gruposFinalizados ||
+      resultado.matriculasFinalizadas
+    ) {
       console.log(
-        `Finalización automática: ${resultado.periodosFinalizados} periodos y ${resultado.gruposFinalizados} grupos.`,
+        `Finalización automática: ${resultado.periodosFinalizados} periodos, ${resultado.gruposFinalizados} grupos y ${resultado.matriculasFinalizadas} matrículas.`,
       );
     }
   } catch (error) {

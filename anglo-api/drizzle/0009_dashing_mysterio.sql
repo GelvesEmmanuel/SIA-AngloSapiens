@@ -1,0 +1,1 @@
+ALTER TABLE "notas" ALTER COLUMN "habilidad" SET DATA TYPE "public"."habilidad" USING "habilidad"::text::"public"."habilidad";
