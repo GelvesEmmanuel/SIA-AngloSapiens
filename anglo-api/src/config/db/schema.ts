@@ -646,3 +646,4 @@ export const notas = pgTable(
       .onDelete("restrict"),
   ],
 );
+ 

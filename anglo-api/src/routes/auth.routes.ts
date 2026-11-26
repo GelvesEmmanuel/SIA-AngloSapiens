@@ -4,6 +4,7 @@
 import {Router} from 'express'
 import {
   cambiarContrasenaController,
+  cambiarContrasenaDesdeSesionController,
   cerrarSesionUsuarioController,
   loginController,
   obtenerPerfilActualController,
@@ -16,6 +17,12 @@ router.post('/login', loginController); // para inciiar sesion
 router.get('/perfil', verificarToken, obtenerPerfilActualController);
 
 router.patch('/cambiar-contrasena', verificarToken, cambiarContrasenaController);
+router.patch(
+  '/cambiar-contrasena-sesion',
+  verificarToken,
+  autorizarRoles('SUPER_ADMIN', 'COORD_ACADEMICO', 'COORD_ADMINISTRATIVO', 'DOCENTE'),
+  cambiarContrasenaDesdeSesionController,
+);
 // autorizarROles()protege quien es el que tiene acceso a este ruta
 
 router.post('/logout', verificarToken,  cerrarSesionUsuarioController);

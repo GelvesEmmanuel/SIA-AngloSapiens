@@ -1,6 +1,45 @@
-PEqulso cambios en varios modulos del sistema
+return {
+      matricula: {
+        id: item.matriculaId,
+        codigo: item.codigoMatricula,
+        tipoMatricula: item.tipoMatricula,
+        estadoMatricula: item.estadoMatricula,
+        estadoPago: item.estadoPago,
+        notasPublicadas: item.notasPublicadas,
+        fechaMatricula: item.fechaMatricula,
+        fechaFinalizacion: item.fechaFinalizacion,
+      },
+      periodo: {
+        id: item.periodoId,
+        nombre: item.nombrePeriodo,
+        fechaInicio: item.fechaInicioPeriodo,
+        fechaFin: item.fechaFinPeriodo,
+      },
+      curso: {
+        id: item.cursoId,
+        codigo: item.codigoCurso,
+        nombre: item.nombreCurso,
+        nivel: item.nivelCurso,
+        totalHabilidadesConfiguradas: totalHabilidades,
+      },
+      grupo: {
+        id: item.grupoId,
+        codigo: item.codigoGrupo,
+        fechaInicio: item.fechaInicioGrupo,
+        fechaFin: item.fechaFinGrupo,
+      },
+      calificaciones: {
+        visible: puedeVerNotas,
+        notasPorHabilidad: notasHabilidad,
+        promedioHabilidades,
+        notaExamenFinal: puedeVerNotas ? item.notaExamenFinal : null,
+        notaFinal: puedeVerNotas ? item.notaFinal : null,
+      },
+    };
+  });
 
-1. Cambio que se muestre en el panel del docente la vista de grupos, paar ello agrega esto en las funcionalides del modulo GestionAcademica
-2. Realiza un ajuste en el detallete matricula al lado del codigo del grupo salga el nombre del curso en el que esta. y estp mismo al momento d equere cambiar al estudiante de grupo , para que s emuestre ademas deldocigo dle grupo el nombre del curso asi es mas facil la trazabildiad y la usabilidad
-3. Que se pueda mostra el nonbre del usuario autenticado en el topbar.
-4. Que se epueda mostra la foto de perfil del uusaurio autentivado sea docente o estudiante.
+  return {
+    estudiante,
+    totalRegistros: historial.length,
+    historial,
+  };

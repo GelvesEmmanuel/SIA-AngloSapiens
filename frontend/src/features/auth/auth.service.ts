@@ -23,6 +23,11 @@ export const authService ={
         return response.data;
     },
 
+    cambiarContrasenaDesdeSesion: async(payload: CambiarContrasenaPayload) =>{
+        const response = await api.patch('/auth/cambiar-contrasena-sesion', payload);
+        return response.data;
+    },
+
     logout : async ()=>{
         const response = await api.post('/auth/logout');
         return response.data;

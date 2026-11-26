@@ -6,6 +6,7 @@ import {
   gt,
   inArray,
   isNull,
+  notExists,
   sql,
 } from "drizzle-orm";
 import { db } from "../config/db.js";
@@ -46,6 +47,53 @@ const generarCodigoMatricula = async (tx: Transaccion) => {
   }, 0);
 
   return `MAT-${String(mayorNumero + 1).padStart(4, "0")}`;
+};
+
+const actualizarEstudiantesSinMatriculasActivas = async (
+  tx: Transaccion,
+  estudianteIds: string[],
+  usuarioId: string,
+  motivo: string,
+) => {
+  const idsUnicos = [...new Set(estudianteIds)];
+  if (idsUnicos.length === 0) return;
+
+  const actualizados = await tx
+    .update(estudiantes)
+    .set({ estado: "REGISTRADO", updatedAt: new Date() })
+    .where(
+      and(
+        inArray(estudiantes.id, idsUnicos),
+        eq(estudiantes.estado, "MATRICULADO"),
+        notExists(
+          tx
+            .select({ id: matriculas.id })
+            .from(matriculas)
+            .where(
+              and(
+                eq(matriculas.estudianteId, estudiantes.id),
+                eq(matriculas.estadoMatricula, "ACTIVA"),
+              ),
+            ),
+        ),
+      ),
+    )
+    .returning({ id: estudiantes.id });
+
+  for (const estudiante of actualizados) {
+    await registrarAuditoria(
+      {
+        usuarioId,
+        tablaAfectada: "estudiantes",
+        registroId: estudiante.id,
+        accion: "UPDATE",
+        datosAntiguos: { estado: "MATRICULADO" },
+        datosNuevos: { estado: "REGISTRADO" },
+        motivo,
+      },
+      tx,
+    );
+  }
 };
 
 /** Finaliza las matrículas activas de los grupos indicados dentro de la transacción. */
@@ -105,6 +153,13 @@ export const finalizarMatriculasDeGrupos = async (
       tx,
     );
   }
+
+  await actualizarEstudiantesSinMatriculasActivas(
+    tx,
+    actualizadas.map(({ estudianteId }) => estudianteId),
+    usuarioId,
+    `${motivo}; el estudiante ya no tiene matrículas activas`,
+  );
 
   return actualizadas.length;
 };
@@ -464,17 +519,14 @@ export const cambiarEstadoMatricula = async (
         .where(and(eq(grupos.id, actual.grupoId), isNull(grupos.deletedAt)));
     }
 
-    if (estado === "CANCELADA") {
-      await tx
-        .update(estudiantes)
-        .set({ estado: "REGISTRADO", updatedAt: new Date() })
-        .where(
-          and(
-            eq(estudiantes.id, actual.estudianteId),
-            eq(estudiantes.estado, "MATRICULADO"),
-          ),
-        );
-    }
+    await actualizarEstudiantesSinMatriculasActivas(
+      tx,
+      [actual.estudianteId],
+      usuarioId,
+      estado === "CANCELADA"
+        ? `Matrícula cancelada: ${actualizada.motivoCancelacion}`
+        : "Matrícula finalizada; el estudiante ya no tiene matrículas activas",
+    );
 
     await registrarAuditoria({
       usuarioId,

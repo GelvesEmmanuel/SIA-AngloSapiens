@@ -86,6 +86,20 @@ export function AuthProvider({
     });
   }, []);
 
+  const finalizarCambioContrasena = useCallback(() => {
+    try {
+      sessionStorage.setItem(
+        "sia.auth.passwordChangedNotice",
+        "true"
+      );
+    } catch {
+      // La confirmación es opcional si el almacenamiento no está disponible.
+    }
+
+    authStorage.clearSession();
+    setSession(null);
+  }, []);
+
   // Cambiar la contraseña e invalidar la sesión local.
   const cambiarContrasena = useCallback(
     async (
@@ -107,20 +121,32 @@ export function AuthProvider({
         );
       }
 
-      try {
-        sessionStorage.setItem(
-          "sia.auth.passwordChangedNotice",
-          "true"
-        );
-      } catch {
-        // La confirmación es opcional si el almacenamiento no está disponible.
+      finalizarCambioContrasena();
+    },
+    [finalizarCambioContrasena, session?.token]
+  );
+
+  const cambiarContrasenaDesdeSesion = useCallback(
+    async (
+      payload: CambiarContrasenaPayload
+    ): Promise<void> => {
+      if (!session?.token) {
+        throw new Error("Debes iniciar sesión para cambiar tu contraseña.");
       }
 
-      // El backend invalida el JWT anterior.
-      authStorage.clearSession();
-      setSession(null);
+      const response =
+        await authService.cambiarContrasenaDesdeSesion(payload);
+
+      if (!response.exito) {
+        throw new Error(
+          response.mensaje ||
+            "No fue posible cambiar la contraseña."
+        );
+      }
+
+      finalizarCambioContrasena();
     },
-    [session?.token]
+    [finalizarCambioContrasena, session?.token]
   );
 
   const logout = useCallback(async (): Promise<void> => {
@@ -149,6 +175,7 @@ export function AuthProvider({
     login,
     setActiveRole,
     cambiarContrasena,
+    cambiarContrasenaDesdeSesion,
     logout,
   };
 

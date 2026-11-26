@@ -262,6 +262,7 @@ export const obtenerDocentes = async (
     conditions.push(
       ilike(
         sql`CONCAT(
+      COALESCE(${docentes.codigo}, ''), ' ',
       COALESCE(${docentes.nombre}, ''), ' ',
       COALESCE(${docentes.apellidos}, ''), ' ',
       COALESCE(${docentes.numeroDocumento}, '')

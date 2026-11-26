@@ -14,6 +14,47 @@ import { obtenerUrlFirmada } from './storage.service.js';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
+const actualizarContrasena = async (
+  usuarioId: string,
+  contrasenaActual: string,
+  nuevaContrasena: string,
+  exigirContrasenaDiferente = false,
+) => {
+  const [usuario] = await db
+    .select()
+    .from(usuarios)
+    .where(eq(usuarios.usuarioId, usuarioId));
+
+  if (!usuario) {
+    throw new Error('Usuario no encontrado');
+  }
+
+  const esValida = await compararPassword(contrasenaActual, usuario.contrasenaHash);
+  if (!esValida) {
+    throw new Error('La contraseña actual es incorrecta');
+  }
+
+  if (exigirContrasenaDiferente && contrasenaActual === nuevaContrasena) {
+    throw new Error('La nueva contraseña debe ser diferente de la actual');
+  }
+
+  const nuevoHash = await encriptarPassword(nuevaContrasena);
+
+  await db
+    .update(usuarios)
+    .set({
+      contrasenaHash: nuevoHash,
+      requiereCambioContrasena: false,
+      versionToken: usuario.versionToken + 1,
+      updatedAt: new Date(),
+    })
+    .where(eq(usuarios.usuarioId, usuarioId));
+
+  return {
+    mensaje: 'Contraseña actualizada exitosamente. Por favor inicie sesión nuevamente.',
+  };
+};
+
 export const AuthService = {
 
   // RQF-SEG-01: Autenticación de Usuarios (Login)
@@ -143,7 +184,7 @@ export const AuthService = {
       if (foto) fotoPerfil = await obtenerUrlFirmada(foto.urlArchivo, 3600);
     }
 
-    return { nombre, fotoPerfil };
+    return { username: usuario.username, nombre, fotoPerfil, roles };
   },
 
   // RQF-SEG-04: Cambio Obligatorio o Voluntario de Contraseña
@@ -152,39 +193,15 @@ export const AuthService = {
     contrasenaActual: string,
     nuevaContrasena: string
   ) => {
-    // 1. Buscar usuario
-    const [usuario] = await db
-      .select()
-      .from(usuarios)
-      .where(eq(usuarios.usuarioId, usuarioId));
+    return actualizarContrasena(usuarioId, contrasenaActual, nuevaContrasena);
+  },
 
-    if (!usuario) {
-      throw new Error('Usuario no encontrado');
-    }
-
-    // 2. Verificar contraseña actual
-    const esValida = await compararPassword(contrasenaActual, usuario.contrasenaHash);
-    if (!esValida) {
-      throw new Error('La contraseña actual es incorrecta');
-    }
-
-    // 3. Encriptar nueva contraseña
-    const nuevoHash = await encriptarPassword(nuevaContrasena);
-
-    // 4. Actualizar en base de datos: cambiar contraseña, poner flag en false e incrementar versionToken (invalida sesiones anteriores)
-    await db
-      .update(usuarios)
-      .set({
-        contrasenaHash: nuevoHash,
-        requiereCambioContrasena: false,
-        versionToken: usuario.versionToken + 1,
-        updatedAt: new Date(),
-      })
-      .where(eq(usuarios.usuarioId, usuarioId));
-
-    return {
-      mensaje: 'Contraseña actualizada exitosamente. Por favor inicie sesión nuevamente.',
-    };
+  cambiarContrasenaDesdeSesion: async (
+    usuarioId: string,
+    contrasenaActual: string,
+    nuevaContrasena: string,
+  ) => {
+    return actualizarContrasena(usuarioId, contrasenaActual, nuevaContrasena, true);
   },
 
   cerrarSesion: async(usuarioId: string) =>{

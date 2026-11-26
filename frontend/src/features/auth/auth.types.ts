@@ -24,8 +24,10 @@ export interface LoginData {
 }
 
 export interface PerfilAutenticado {
+  username: string;
   nombre: string;
   fotoPerfil: string | null;
+  roles: UserRole[];
 }
 
 export interface ApiResponse<T> {
@@ -65,6 +67,10 @@ export interface AuthContextValue {
   setActiveRole: (role: UserRole) => void;
 
   cambiarContrasena: (
+    payload: CambiarContrasenaPayload
+  ) => Promise<void>;
+
+  cambiarContrasenaDesdeSesion: (
     payload: CambiarContrasenaPayload
   ) => Promise<void>;
 

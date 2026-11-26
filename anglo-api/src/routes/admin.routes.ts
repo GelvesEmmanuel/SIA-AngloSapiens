@@ -3,10 +3,12 @@
 
 import { Router } from "express";
 import{crearUSuarioAdminController, obtenerUsuarioPorIdController, listarUsuariosController, cambiarEstadoUsuarioController, restablecerContrasenaUsuarioController, asignarRolUsuarioController, buscarUsuarioCoordinadorController, convertirUsuarioEnCoordinadorController} from '../controllers/admin.controller.js'
+import { obtenerAuditoriasController } from "../controllers/auditoriaSis.controller.js";
 import { autorizarRoles, verificarToken } from "../middlewares/auth.midleware.js";
 
 const router = Router();
 const autorizado = autorizarRoles('SUPER_ADMIN')// indica que rol tiene permiso
+router.get('/auditorias', verificarToken, autorizado, obtenerAuditoriasController)
 router.post('/usuarios', verificarToken, autorizado, crearUSuarioAdminController)// para crear usuarios por el Super administrador 
 router.get('/usuarios', verificarToken, autorizado, listarUsuariosController)// para listar los usuarios por rol y estado
 router.get('/usuarios/coordinadores/buscar', verificarToken, autorizado, buscarUsuarioCoordinadorController)// busca por documento una cuenta vinculada a un perfil existente

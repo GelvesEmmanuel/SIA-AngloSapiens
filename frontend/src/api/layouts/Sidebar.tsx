@@ -13,6 +13,7 @@ import {
   CalendarDays,
   School,
   ShieldCheck,
+  UserRound,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -39,6 +40,7 @@ const icons: Record<string, LucideIcon> = {
   History,
   CalendarDays,
   School,
+  UserRound,
 };
 
 const roleLabels: Record<string, string> = {

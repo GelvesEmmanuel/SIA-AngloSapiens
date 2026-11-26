@@ -237,9 +237,11 @@ export const obtenerEstudiantes = async (
     conditions.push(
       ilike(
         sql`CONCAT(
-      COALESCE(${estudiantes.nombre}, ''), ' ',
-      COALESCE(${estudiantes.apellidos}, ''), ' ',
-      COALESCE(${estudiantes.numeroDocumento}, '')
+        COALESCE(${estudiantes.codigo}, ''), ' ',
+        COALESCE(${estudiantes.nombre}, ''), ' ',
+        COALESCE(${estudiantes.apellidos}, ''), ' ',
+        COALESCE(${estudiantes.numeroDocumento}, '')
+      
     )`,
         termino,
       ),
@@ -343,16 +345,36 @@ export const cambiarEstadoEstudiante = async ({
     .limit(1);
 
   if (!estudiante) {
-    throw new Error("ESTUDIANTE_NO_ENCONTRADO");
+  throw new AppError(
+    "El estudiante especificado no existe.",
+    404,
+    "ESTUDIANTE_NO_ENCONTRADO",
+  );
+}
+  // 2. Bloquear cambio a REGISTRADO o INACTIVO si actualmente está MATRICULADO
+  if (
+    estudiante.estadoActual === EstadoEstudiante.MATRICULADO &&
+    (nuevoEstado === EstadoEstudiante.REGISTRADO ||
+      nuevoEstado === EstadoEstudiante.INACTIVO)
+  ) {
+    throw new AppError(
+      "No se puede cambiar el estado del estudiante a registrado o inactivo mientras esté matriculado; primero debe cancelar la matrícula.",
+      400,
+      "ESTUDIANTE_MATRICULADO_DEBE_CANCELAR_MATRICULA",
+    );
   }
-  //2. validacion de negocio : si pasa a inactivo, exigir motivo de inactivacion.
+  //3. validacion de negocio : si pasa a inactivo, exigir motivo de inactivacion.
   if (
     nuevoEstado === EstadoEstudiante.INACTIVO &&
     (!motivoInactivacion || motivoInactivacion.trim() === "")
   ) {
-    throw new Error("MOTIVO_INACTIVACION_REQUERIDO");
+   throw new AppError(
+    "El motivo de inactivación es obligatorio para inactivar al estudiante.",
+    400,
+    "MOTIVO_INACTIVACION_REQUERIDO",
+  );
   }
-  // 3. Validación de negocio: Si se intenta INACTIVAR, verificar que NO tenga matrículas activas
+  // 4. Validación de negocio: Si se intenta INACTIVAR, verificar que NO tenga matrículas activas
   if (nuevoEstado === EstadoEstudiante.INACTIVO) {
     const [matriculaActiva] = await db
       .select({ id: matriculas.id })
@@ -366,7 +388,11 @@ export const cambiarEstadoEstudiante = async ({
       .limit(1);
 
     if (matriculaActiva) {
-      throw new AppError("No puedes inactivar al estudiante porque tiene matriculas activas",400,"ESTUDIANTE_TIENE_MATRICULAS_ACTIVAS");
+     throw new AppError(
+      "No puedes inactivar al estudiante porque tiene matrículas activas; primero debe cancelar la matrícula.",
+      400,
+      "ESTUDIANTE_TIENE_MATRICULAS_ACTIVAS",
+    );
     }
   }
 

@@ -9,8 +9,13 @@ const seccionesEstudiante = [
 
 export function GestionAcademicaLayout() {
   const { activeRole } = useAuth();
-  const secciones =
-    activeRole === "DOCENTE"
+  const esGestor =
+    activeRole === "SUPER_ADMIN" ||
+    activeRole === "COORD_ACADEMICO" ||
+    activeRole === "COORD_ADMINISTRATIVO";
+  const secciones = esGestor
+    ? [{ label: "Historial académico", path: "/gestion-academica/historial" }]
+    : activeRole === "DOCENTE"
       ? [
           { label: "Mis grupos", path: "/gestion-academica", end: true },
           { label: "Registrar notas", path: "/gestion-academica/notas" },
@@ -22,13 +27,19 @@ export function GestionAcademicaLayout() {
     <div className="mx-auto w-full max-w-7xl space-y-5">
       <header>
         <p className="eyebrow mb-2">
-          {activeRole === "DOCENTE" ? "Portal del docente" : "Portal del estudiante"}
+          {esGestor
+            ? "Gestión académica"
+            : activeRole === "DOCENTE"
+              ? "Portal del docente"
+              : "Portal del estudiante"}
         </p>
         <h1 className="page-title">Gestión académica</h1>
         <p className="mt-2 text-sm text-muted">
-          {activeRole === "DOCENTE"
-            ? "Consulta tus grupos y administra la información académica de tus estudiantes."
-            : "Consulta tus cursos matriculados y accede a tu información académica."}
+          {esGestor
+            ? "Consulta el historial académico de los estudiantes por documento de identidad."
+            : activeRole === "DOCENTE"
+              ? "Consulta tus grupos y administra la información académica de tus estudiantes."
+              : "Consulta tus cursos matriculados y accede a tu información académica."}
         </p>
       </header>
 

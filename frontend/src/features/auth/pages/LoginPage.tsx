@@ -10,6 +10,19 @@ export default function LoginPage() {
   const [contrasena, setContrasena] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [successMessage] = useState(() => {
+    try {
+      const notice = sessionStorage.getItem("sia.auth.passwordChangedNotice");
+      if (notice) {
+        sessionStorage.removeItem("sia.auth.passwordChangedNotice");
+        return "Tu contraseña se actualizó. Inicia sesión con tu nueva contraseña.";
+      }
+    } catch {
+      return "";
+    }
+
+    return "";
+  });
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -139,6 +152,15 @@ export default function LoginPage() {
                 className="w-full rounded-xl border border-border bg-surface-muted px-4 py-3.5 text-sm text-heading outline-none transition placeholder:text-slate-400 focus:border-navy focus:bg-white focus:ring-4 focus:ring-navy/10 disabled:opacity-60"
               />
             </div>
+
+            {successMessage && (
+              <p
+                className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800"
+                role="status"
+              >
+                {successMessage}
+              </p>
+            )}
 
             {errorMessage && (
               <p

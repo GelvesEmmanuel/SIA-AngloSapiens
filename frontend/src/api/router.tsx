@@ -7,6 +7,7 @@ import { GuestOnlyRoute } from "./guards/GuestOnlyRoute";
 
 import LoginPage from "../features/auth/pages/LoginPage";
 import ChangePasswordPage from "../features/auth/pages/CambiarContraseñapage";
+import MiPerfilPage from "../features/auth/pages/MiPerfilPage";
 import HomePage from "../features/home/HomePage";
 import UsersPage from "../features/users/pages/UsersPage";
 import { GestionDocentePage } from "../features/GestionDocentes/pages/GestionDocentePage";
@@ -30,12 +31,14 @@ import { RegistrarMatriculaPage } from "../features/GestionMatriculas/pages/Regi
 import { DetalleMatriculaPage } from "../features/GestionMatriculas/pages/DetalleMatriculaPage";
 import { GestionAcademicaLayout } from "../features/GestionAcademica/pages/GestionAcademicaLayout";
 import { GestionAcademicaInicioPage } from "../features/GestionAcademica/pages/GestionAcademicaInicioPage";
-import { FuncionalidadAcademicaPage } from "../features/GestionAcademica/pages/FuncionalidadAcademicaPage";
 import { RegistroAsistenciaPage } from "../features/GestionAcademica/pages/RegistroAsistenciaPage";
 import { HistorialAsistenciasGrupo } from "../features/GestionAcademica/pages/HistorialAsistenciasGrupo";
 import { ConteoInasistenciasGrupoPage } from "../features/GestionAcademica/pages/ConteoInasistenciasGrupoPage";
 import { RegistroNotasPage } from "../features/GestionAcademica/pages/RegistroNotasPage";
 import { MisCalificacionesPage } from "../features/GestionAcademica/pages/MisCalificacionesPage";
+import { VistaHistorialAcademico } from "../features/GestionAcademica/pages/VistaHistorialAcademico";
+import { AuditoriasPage } from "../features/Auditoria/pages/AuditoriasPage";
+
 export function AppRouter() {
   return (
     <Routes>
@@ -60,6 +63,18 @@ export function AppRouter() {
         }
       >
         <Route index element={<UsersPage />} />
+      </Route>
+      <Route
+        path="/auditorias"
+        element={
+          <RequireAuth>
+            <RequireRouteAccess>
+              <DashboardLayout />
+            </RequireRouteAccess>
+          </RequireAuth>
+        }
+      >
+        <Route index element={<AuditoriasPage />} />
       </Route>
 
       <Route
@@ -96,7 +111,7 @@ export function AppRouter() {
           </RequireAuth>
         }
       >
-      <Route index element={<TermsAndSignaturePage />} />
+        <Route index element={<TermsAndSignaturePage />} />
       </Route>
 
       <Route
@@ -206,7 +221,9 @@ export function AppRouter() {
       >
         <Route element={<GestionAcademicaLayout />}>
           <Route index element={<GestionAcademicaInicioPage />} />
-          <Route element={<RequirePermission permission="groups:read_students" />}>
+          <Route
+            element={<RequirePermission permission="groups:read_students" />}
+          >
             <Route
               path="grupos/:id"
               element={<DetalleGrupoPage returnPath="/gestion-academica" />}
@@ -220,22 +237,12 @@ export function AppRouter() {
               element={<ConteoInasistenciasGrupoPage />}
             />
           </Route>
-          <Route
-            path="calificaciones"
-            element={<MisCalificacionesPage />}
-          />
-          <Route
-            path="historial"
-            element={
-              <FuncionalidadAcademicaPage
-                titulo="Historial académico"
-                descripcion="Aquí podrás revisar el historial de cursos y periodos académicos completados."
-              />
-            }
-          />
-          <Route
-            element={<RequirePermission permission="grades:create" />}
-          >
+          <Route element={<RequirePermission permission="academic_history:read" />}>
+            <Route path="calificaciones" element={<MisCalificacionesPage />} />
+            <Route path="historial" element={<VistaHistorialAcademico />} />
+            <Route path="historial/:estudianteId" element={<VistaHistorialAcademico />} />
+          </Route>
+          <Route element={<RequirePermission permission="grades:create" />}>
             <Route path="notas" element={<RegistroNotasPage />} />
           </Route>
           <Route element={<RequirePermission permission="attendance:create" />}>
@@ -275,6 +282,18 @@ export function AppRouter() {
           </RequireAuth>
         }
       />
+      <Route
+        path="/perfil"
+        element={
+          <RequireAuth>
+            <RequireRouteAccess>
+              <DashboardLayout />
+            </RequireRouteAccess>
+          </RequireAuth>
+        }
+      >
+        <Route index element={<MiPerfilPage />} />
+      </Route>
 
       <Route
         path="/inicio"

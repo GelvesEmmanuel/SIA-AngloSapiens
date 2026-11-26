@@ -30,6 +30,13 @@ const COORD_ROLES: UserRole[] = [
   "COORD_ACADEMICO",
   "COORD_ADMINISTRATIVO",
 ];
+
+const PERFIL_ROLES: UserRole[] = [
+  "SUPER_ADMIN",
+  "COORD_ACADEMICO",
+  "COORD_ADMINISTRATIVO",
+  "DOCENTE",
+];
 /*
 const ACADEMIC_ROLES: UserRole[] = [
   "SUPER_ADMIN",
@@ -50,12 +57,29 @@ export const navigationConfig: NavigationSection[] = [
     ],
   },
   {
+    title: "CUENTA",
+    items: [
+      {
+        label: "Mi perfil",
+        path: "/perfil",
+        icon: "UserRound",
+        allowedRoles: PERFIL_ROLES,
+      },
+    ],
+  },
+  {
     title: "ADMINISTRACIÓN",
     items: [
       {
         label: "Usuarios",
         path: "/usuarios",
         icon: "Users",
+        allowedRoles: ADMIN_ROLES,
+      },
+      {
+        label: "Auditoría",
+        path: "/auditorias",
+        icon: "History",
         allowedRoles: ADMIN_ROLES,
       },
       {
@@ -142,7 +166,7 @@ export const navigationConfig: NavigationSection[] = [
       },
       {
         label: "Historial académico",
-        path: "/historial-academico",
+        path: "/gestion-academica/historial",
         icon: "History",
         allowedRoles: [
           "SUPER_ADMIN",

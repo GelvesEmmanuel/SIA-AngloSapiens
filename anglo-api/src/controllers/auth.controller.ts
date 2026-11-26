@@ -2,7 +2,11 @@ import type { NextFunction, Response } from "express";
 import { ZodError } from "zod";
 import { AuthRequest } from "../middlewares/auth.midleware.js";
 import { AuthService } from "../services/auth.service.js";
-import { loginSchema, cambiarContrasenaSchema } from "../validators/auth.validator.js";
+import {
+  loginSchema,
+  cambiarContrasenaSchema,
+  cambiarContrasenaSesionSchema,
+} from "../validators/auth.validator.js";
 import { AppError } from "../utils/appError.utils.js";
 
 const validationError = (error: ZodError) =>
@@ -34,6 +38,11 @@ const mapAuthError = (error: unknown): unknown => {
   if (message === "La contraseña actual es incorrecta") {
     return new AppError(message, 400, "CONTRASENA_ACTUAL_INVALIDA", [
       { field: "contrasenaActual", message },
+    ]);
+  }
+  if (message === "La nueva contraseña debe ser diferente de la actual") {
+    return new AppError(message, 400, "CONTRASENA_NUEVA_IGUAL", [
+      { field: "nuevaContrasena", message },
     ]);
   }
 
@@ -102,6 +111,36 @@ export const cambiarContrasenaController = async (
     }
 
     const resultado = await AuthService.cambiarContrasena(
+      usuarioId,
+      datosValidados.contrasenaActual,
+      datosValidados.nuevaContrasena
+    );
+
+    return res.status(200).json({
+      exito: true,
+      ...resultado,
+    });
+  } catch (error: unknown) {
+    return next(
+      error instanceof ZodError ? validationError(error) : mapAuthError(error)
+    );
+  }
+};
+
+export const cambiarContrasenaDesdeSesionController = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const datosValidados = cambiarContrasenaSesionSchema.parse(req.body);
+    const usuarioId = req.user?.usuarioId;
+
+    if (!usuarioId) {
+      throw new AppError("No autorizado.", 401, "NO_AUTORIZADO");
+    }
+
+    const resultado = await AuthService.cambiarContrasenaDesdeSesion(
       usuarioId,
       datosValidados.contrasenaActual,
       datosValidados.nuevaContrasena
