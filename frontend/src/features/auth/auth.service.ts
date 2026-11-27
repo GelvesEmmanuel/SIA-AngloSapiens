@@ -4,6 +4,8 @@ import type {
     LoginPayload,
     LoginResponse,
     PerfilAutenticado,
+    ConfiguracionUrlExternaResponse,
+    UrlSistemaExterno,
 } from './auth.types';
 import type { CambiarContrasenaPayload } from './auth.types';
 export const authService ={
@@ -15,6 +17,21 @@ export const authService ={
 
     obtenerPerfilActual: async () => {
         const response = await api.get<ApiResponse<PerfilAutenticado>>('/auth/perfil');
+        return response.data;
+    },
+
+    obtenerUrlExternaLogin: async () => {
+        const response = await api.get<ConfiguracionUrlExternaResponse>(
+            '/admin/configuracion/url-externa',
+        );
+        return response.data;
+    },
+
+    actualizarUrlExternaLogin: async (payload: UrlSistemaExterno) => {
+        const response = await api.put<ConfiguracionUrlExternaResponse>(
+            '/admin/configuracion/url-externa',
+            payload,
+        );
         return response.data;
     },
 

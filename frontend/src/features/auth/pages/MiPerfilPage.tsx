@@ -22,6 +22,11 @@ export default function MiPerfilPage() {
   const [confirmarContrasena, setConfirmarContrasena] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [urlAcademia, setUrlAcademia] = useState("");
+  const [isUrlLoading, setIsUrlLoading] = useState(false);
+  const [isUrlSubmitting, setIsUrlSubmitting] = useState(false);
+  const [urlErrorMessage, setUrlErrorMessage] = useState("");
+  const [urlSuccessMessage, setUrlSuccessMessage] = useState("");
 
   useEffect(() => {
     let isMounted = true;
@@ -45,6 +50,54 @@ export default function MiPerfilPage() {
       isMounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!perfil?.roles.includes("SUPER_ADMIN")) return;
+
+    let isMounted = true;
+    setIsUrlLoading(true);
+
+    const cargarUrlAcademia = async () => {
+      try {
+        const response = await authService.obtenerUrlExternaLogin();
+        if (!response.exito) {
+          throw new Error(response.error || response.mensaje || "No fue posible cargar el enlace de la academia.");
+        }
+        if (isMounted) setUrlAcademia(response.datos.urlSistemaExterno);
+      } catch (error: unknown) {
+        if (isMounted) setUrlErrorMessage(extraerMensajeError(error));
+      } finally {
+        if (isMounted) setIsUrlLoading(false);
+      }
+    };
+
+    void cargarUrlAcademia();
+    return () => {
+      isMounted = false;
+    };
+  }, [perfil]);
+
+  const handleUrlSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setUrlErrorMessage("");
+    setUrlSuccessMessage("");
+    setIsUrlSubmitting(true);
+
+    try {
+      const response = await authService.actualizarUrlExternaLogin({
+        urlSistemaExterno: urlAcademia.trim(),
+      });
+      if (!response.exito) {
+        throw new Error(response.error || response.mensaje || "No fue posible actualizar el enlace.");
+      }
+      setUrlAcademia(response.datos.urlSistemaExterno);
+      setUrlSuccessMessage(response.mensaje || "Enlace actualizado correctamente.");
+    } catch (error: unknown) {
+      setUrlErrorMessage(extraerMensajeError(error));
+    } finally {
+      setIsUrlSubmitting(false);
+    }
+  };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -137,6 +190,76 @@ export default function MiPerfilPage() {
           </div>
         )}
       </section>
+
+      {perfil?.roles.includes("SUPER_ADMIN") && (
+        <section className="rounded-2xl border border-border bg-white p-6 shadow-sm sm:p-8">
+          <div className="mb-6">
+            <p className="text-sm font-semibold uppercase tracking-wider text-muted">
+              Configuración de la academia
+            </p>
+            <h2 className="mt-2 text-xl font-extrabold text-heading">
+              Enlace de la landing page
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-muted">
+              Este enlace se muestra en el panel del login y dirige a la página
+              pública de la academia.
+            </p>
+          </div>
+
+          {isUrlLoading ? (
+            <p role="status" className="text-sm text-muted">
+              Cargando enlace...
+            </p>
+          ) : (
+            <form onSubmit={handleUrlSubmit} className="space-y-5">
+              <div>
+                <label
+                  htmlFor="urlAcademia"
+                  className="mb-2 block text-sm font-semibold text-body"
+                >
+                  URL de la landing page
+                </label>
+                <input
+                  id="urlAcademia"
+                  name="urlAcademia"
+                  type="url"
+                  maxLength={500}
+                  value={urlAcademia}
+                  onChange={(event) => setUrlAcademia(event.target.value)}
+                  placeholder="https://anglosapiensacademia.com/"
+                  disabled={isUrlSubmitting}
+                  className="w-full rounded-xl border border-border bg-surface-muted px-4 py-3 text-sm text-heading outline-none transition focus:border-navy focus:bg-white focus:ring-4 focus:ring-navy/10 disabled:opacity-60"
+                />
+              </div>
+
+              {urlErrorMessage && (
+                <p
+                  className="rounded-xl border border-error/20 bg-error-soft px-4 py-3 text-sm text-error"
+                  role="alert"
+                >
+                  {urlErrorMessage}
+                </p>
+              )}
+              {urlSuccessMessage && (
+                <p
+                  className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800"
+                  role="status"
+                >
+                  {urlSuccessMessage}
+                </p>
+              )}
+
+              <button
+                type="submit"
+                disabled={isUrlSubmitting}
+                className="w-full rounded-xl bg-red px-5 py-3.5 text-sm font-bold text-white shadow-sm transition hover:bg-red-dark focus:outline-none focus:ring-4 focus:ring-red/20 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+              >
+                {isUrlSubmitting ? "Actualizando enlace..." : "Actualizar enlace"}
+              </button>
+            </form>
+          )}
+        </section>
+      )}
 
       <section className="rounded-2xl border border-border bg-white p-6 shadow-sm sm:p-8">
         <div className="mb-6">

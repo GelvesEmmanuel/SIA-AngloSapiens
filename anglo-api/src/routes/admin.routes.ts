@@ -5,7 +5,7 @@ import { Router } from "express";
 import{crearUSuarioAdminController, obtenerUsuarioPorIdController, listarUsuariosController, cambiarEstadoUsuarioController, restablecerContrasenaUsuarioController, asignarRolUsuarioController, buscarUsuarioCoordinadorController, convertirUsuarioEnCoordinadorController} from '../controllers/admin.controller.js'
 import { obtenerAuditoriasController } from "../controllers/auditoriaSis.controller.js";
 import { autorizarRoles, verificarToken } from "../middlewares/auth.midleware.js";
-
+import{obtenerUrlExternaLogin,actualizarUrlExternaLogin} from "../controllers/rutaLandinPage.controller.js"
 const router = Router();
 const autorizado = autorizarRoles('SUPER_ADMIN')// indica que rol tiene permiso
 router.get('/auditorias', verificarToken, autorizado, obtenerAuditoriasController)
@@ -17,4 +17,9 @@ router.get('/usuarios/:id', verificarToken, autorizado, obtenerUsuarioPorIdContr
 router.post('/usuarios/:id/roles', verificarToken, autorizado, asignarRolUsuarioController)// agrega un rol sin reemplazar los que el usuario ya tiene
 router.patch('/usuarios/:id/estado', verificarToken, autorizado, cambiarEstadoUsuarioController)// para cambiar el estado de un usuario
 router.patch('/usuarios/:id/restablecer-contrasena', verificarToken, autorizado, restablecerContrasenaUsuarioController)
+
+// para la ruta del landing page
+
+router.get('/configuracion/url-externa', obtenerUrlExternaLogin);
+router.put('/configuracion/url-externa', verificarToken, autorizado, actualizarUrlExternaLogin);
 export default router;

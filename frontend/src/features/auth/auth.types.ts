@@ -36,6 +36,17 @@ export interface ApiResponse<T> {
   data: T;
 }
 
+export interface UrlSistemaExterno {
+  urlSistemaExterno: string;
+}
+
+export interface ConfiguracionUrlExternaResponse {
+  exito: boolean;
+  mensaje?: string;
+  error?: string;
+  datos: UrlSistemaExterno;
+}
+
 export interface LoginResponse {
   exito: boolean;
   mensaje: string;

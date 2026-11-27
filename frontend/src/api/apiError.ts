@@ -8,6 +8,8 @@ export interface ApiValidationError {
 export interface ApiErrorResponse {
   success: false;
   message: string;
+  error?: string;
+  mensaje?: string;
   data: null;
   code: string;
   errors: ApiValidationError[] | null;
@@ -21,6 +23,10 @@ export function extraerMensajeError(error: unknown): string {
       const respuesta = body as Partial<ApiErrorResponse>;
       const message =
         typeof respuesta.message === "string" ? respuesta.message.trim() : "";
+      const errorMessage =
+        typeof respuesta.error === "string" ? respuesta.error.trim() : "";
+      const backendMessage =
+        typeof respuesta.mensaje === "string" ? respuesta.mensaje.trim() : "";
       const detalles = Array.isArray(respuesta.errors)
         ? respuesta.errors
             .filter(
@@ -39,6 +45,8 @@ export function extraerMensajeError(error: unknown): string {
       }
 
       if (message) return message;
+      if (errorMessage) return errorMessage;
+      if (backendMessage) return backendMessage;
       if (detalles.length > 0) return detalles.join("; ");
     } else if (typeof body === "string" && body.trim()) {
       return body;

@@ -1,0 +1,63 @@
+ESTRUCTURA Y FUNCIONALIDAD DEL PROYECTO SIA ANGLOSAPIENS
+
+1. DESCRIPCIÓN GENERAL
+
+SIA AngloSapiens es un sistema académico orientado a la gestión integral de los procesos administrativos y académicos de una institución de idiomas. Su arquitectura separa claramente la interfaz de usuario del servidor de aplicación y de la base de datos, lo que permite mantener responsabilidades independientes, facilitar la evolución del software y aplicar controles de seguridad sobre las operaciones sensibles.
+
+El backend fue desarrollado con Node.js, Express y TypeScript. Utiliza Drizzle ORM para representar y consultar el modelo de datos de PostgreSQL, tanto en instalaciones locales como en servicios administrados de Supabase. El frontend fue construido con React y TypeScript sobre Vite, emplea Tailwind CSS para la presentación visual y Axios para consumir los servicios HTTP ofrecidos por el backend.
+
+La solución integra autenticación basada en tokens JWT, control de permisos, gestión de perfiles, administración de usuarios y coordinación de los procesos académicos. En conjunto, permite que coordinadores, docentes y estudiantes trabajen con información correspondiente a su rol y accedan únicamente a las operaciones autorizadas.
+
+2. ESTRUCTURA DEL BACKEND
+
+La carpeta anglo-api contiene el servidor y su lógica de negocio. El punto de entrada src/index.ts inicia la aplicación Express, verifica la conexión con la base de datos y pone a disposición el servidor en el puerto configurado. También incorpora un proceso periódico encargado de finalizar los periodos académicos vencidos y actualizar el estado asociado de grupos y matrículas.
+
+La carpeta src/routes concentra la definición de los recursos HTTP disponibles. Las rutas representan dominios como autenticación, administración, docentes, estudiantes, cursos, grupos, periodos, aulas, matrículas, notas, gestión académica y carga de archivos. Cada módulo vincula una URL y un método HTTP con el controlador que debe procesar la solicitud.
+
+La carpeta src/controllers administra la interacción entre las rutas y la lógica de negocio. Sus componentes reciben los parámetros de cada petición, invocan las operaciones correspondientes y construyen las respuestas que serán enviadas al cliente. También participan en el manejo de errores y en la coordinación de procesos que involucran varias entidades.
+
+La carpeta src/services contiene la lógica funcional principal del sistema. Los servicios permiten autenticar usuarios, crear y modificar registros, administrar coordinadores, estudiantes y docentes, gestionar cursos y grupos, controlar periodos académicos, matricular estudiantes, registrar asistencias y notas, consultar historiales y procesar archivos. Esta capa centraliza las reglas de negocio para evitar que dependan directamente de las rutas o de la interfaz gráfica.
+
+La carpeta src/middlewares proporciona controles transversales. Incluye la validación de autenticación y autorización, la captura y normalización de errores, y las comprobaciones necesarias para aceptar y administrar archivos cargados por el usuario. Estos componentes protegen las operaciones que requieren sesión activa, permisos específicos o formatos de archivo válidos.
+
+La carpeta src/validators define las reglas de validación de datos para los diferentes módulos. Su objetivo es comprobar los campos recibidos antes de que sean utilizados por la lógica de negocio, reduciendo operaciones inválidas y asegurando consistencia en entidades como usuarios, docentes, estudiantes, cursos, grupos, aulas, matrículas, periodos y notas.
+
+La carpeta src/config contiene la configuración técnica del backend. src/config/db.ts establece la conexión con PostgreSQL mediante postgres-js y expone la instancia de Drizzle ORM. src/config/db/schema.ts representa las tablas, relaciones, enumeraciones y restricciones del modelo académico. El esquema comprende usuarios y roles, estudiantes, docentes, coordinadores, archivos, periodos, cursos, grupos, horarios, aulas, matrículas, sesiones de clase, asistencias y calificaciones.
+
+Las carpetas src/types, src/utils y src/libs completan la organización técnica. Los tipos describen las estructuras propias de cada dominio; las utilidades contienen funciones comunes relacionadas con seguridad, errores y limpieza de recursos; y los componentes de src/libs permiten integrar herramientas como Multer para el tratamiento de cargas.
+
+Las migraciones ubicadas en la carpeta drizzle registran la evolución del esquema de la base de datos. De forma complementaria, Documentacion/BD_ANGLO.sql documenta el modelo SQL original y los scripts de migración permiten mantener sincronizado el esquema utilizado por Drizzle ORM.
+
+El punto de entrada src/app.ts configura Express con CORS, registro de solicitudes, interpretación de datos JSON y formularios, montaje de las rutas API y manejo centralizado de errores. De esta forma, el servidor ofrece una interfaz REST consistente y separada de la lógica interna de cada dominio.
+
+3. ESTRUCTURA DEL FRONTEND
+
+La carpeta frontend contiene la aplicación web desarrollada en React. El archivo src/main.tsx representa el punto de entrada: crea el árbol de React, instala el enrutador del navegador y envuelve la aplicación en el contexto de autenticación.
+
+El archivo src/App.tsx actúa como componente raíz y delega el contenido principal al enrutador declarado en src/api/router.tsx. Este enrutador define las vistas públicas y protegidas, además de las rutas anidadas que forman el panel administrativo y los espacios correspondientes a gestión académica.
+
+La carpeta src/api concentra la infraestructura de comunicación y control de acceso. axios.ts configura la URL del backend y agrega el token JWT almacenado en la sesión a las solicitudes que requieren autenticación. La carpeta guards contiene componentes que restringen el acceso a invitados, usuarios autenticados y perfiles con permisos determinados. Los módulos de permissions y router permiten mostrar o habilitar funcionalidades según los roles y permisos del usuario.
+
+Las carpetas src/api/layouts y src/api/router.tsx organizan la navegación principal. DashboardLayout, Sidebar y Topbar integran la estructura visual del panel, mientras que router.tsx relaciona cada URL con una página funcional y aplica las verificaciones necesarias antes de renderizarla.
+
+La carpeta src/features representa la organización funcional del frontend. Cada característica agrupa las páginas, servicios, tipos, hooks y utilidades relacionadas con su dominio. Los módulos principales son autenticación, usuarios, auditoría, estudiantes, docentes, cursos, grupos, periodos académicos, aulas, matrículas y gestión académica.
+
+La funcionalidad de autenticación permite iniciar sesión, almacenar la sesión, cambiar la contraseña y consultar el perfil. AuthContext y useAuth mantienen disponible el estado del usuario durante la navegación. Las guardas comparan el rol, los permisos y el estado de cambio de contraseña antes de permitir el acceso a una página.
+
+Los módulos de gestión administrativa presentan interfaces para consultar, registrar, modificar e inactivar información. Los servicios de estudiantes, docentes, cursos, grupos, matrículas y periodos realizan solicitudes al backend y entregan los datos a los componentes que los muestran en tablas, formularios y vistas de detalle.
+
+El módulo de gestión académica ofrece acciones orientadas a docentes y estudiantes. Permite visualizar grupos asignados, registrar asistencia, calcular conteos de inasistencias, revisar históricos, consultar calificaciones y registrar notas. Sus hooks encapsulan la obtención y actualización de datos, mientras que sus páginas presentan esos datos de acuerdo con los permisos del usuario autenticado.
+
+La carpeta src/assets conserva recursos gráficos utilizados por la interfaz, y src/styles reúne las hojas de estilo globales. El diseño se complementa con componentes visuales basados en clases de Tailwind CSS y elementos gráficos proporcionados por Lucide React.
+
+4. MODELO DE FUNCIONAMIENTO
+
+El usuario accede a una página mediante el enrutador de React y el sistema identifica su sesión y sus permisos. Al ejecutar una acción, el componente de la interfaz utiliza el servicio correspondiente al módulo. Ese servicio envía una solicitud mediante Axios al recurso REST del backend e incluye el token JWT cuando la operación requiere autenticación.
+
+Express recibe la solicitud en src/app.ts y la dirige a la ruta asociada con el dominio solicitado. Los middlewares pueden validar el token, comprobar permisos y controlar los datos o archivos adjuntos. Después, el controlador interpreta la petición y delega el procedimiento a la capa de servicios.
+
+El servicio aplica las reglas de negocio y utiliza Drizzle ORM para consultar o modificar tablas de PostgreSQL o Supabase. Por ejemplo, una matriculación puede involucrar el estudiante, el grupo, los cupos disponibles y el estado académico; un registro de notas puede relacionar una matrícula con una habilidad evaluada; y una consulta académica puede combinar periodos, cursos, grupos, sesiones y asistencias.
+
+Una vez completada la operación, el backend devuelve una respuesta JSON con el resultado o con un mensaje de error estructurado. El middleware central de errores garantiza que las excepciones sean presentadas de manera controlada. En el frontend, el servicio procesa la respuesta y el componente actualiza su estado visual para informar al usuario.
+
+De este modo, el sistema mantiene una separación entre presentación, comunicación, reglas de negocio y persistencia. React administra la experiencia del usuario; Express procesa las solicitudes y aplica controles; Drizzle ORM traduce las operaciones del dominio al modelo relacional; y PostgreSQL/Supabase conserva la información académica de forma persistente.

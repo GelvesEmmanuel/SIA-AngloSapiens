@@ -1,11 +1,14 @@
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useAuth } from "../useAuth";
 import { extraerMensajeError } from "../../../api/apiError";
+import { authService } from "../auth.service";
 
 export default function LoginPage() {
   const { login } = useAuth();
 
+  const [urlAcademia, setUrlAcademia] = useState("");
+  const [urlAcademiaError, setUrlAcademiaError] = useState("");
   const [username, setUsername] = useState("");
   const [contrasena, setContrasena] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -23,6 +26,27 @@ export default function LoginPage() {
 
     return "";
   });
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const cargarUrlAcademia = async () => {
+      try {
+        const response = await authService.obtenerUrlExternaLogin();
+        if (!response.exito) {
+          throw new Error(response.error || response.mensaje || "No fue posible cargar el enlace de la academia.");
+        }
+        if (isMounted) setUrlAcademia(response.datos.urlSistemaExterno);
+      } catch (error: unknown) {
+        if (isMounted) setUrlAcademiaError(extraerMensajeError(error));
+      }
+    };
+
+    void cargarUrlAcademia();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -67,16 +91,31 @@ export default function LoginPage() {
         <p className="text-xs tracking-[0.2em] text-white/60">
           ACADEMIA DE INGLÉS
         </p>
+        {urlAcademia && (
+          <a
+            href={urlAcademia}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-1 block max-w-xs break-all text-xs text-white/70 underline decoration-white/40 underline-offset-2 hover:text-white"
+          >
+            {urlAcademia}
+          </a>
+        )}
+        {urlAcademiaError && (
+          <p role="status" className="mt-1 text-xs text-white/60">
+            No fue posible cargar el enlace de la academia.
+          </p>
+        )}
       </div>
     </div>
 
-    <p className="mb-4 text-sm font-semibold uppercase tracking-[0.25em] text-white/60">
+    <p className="mb-4 text-sm font-semibold uppercase  tracking-[0.25em] text-white/60">
       Sistema de gestión académica
     </p>
 
-    <h1 className="max-w-xl text-4xl font-extrabold leading-tight sm:text-5xl xl:text-6xl">
+    <h1 className="max-w-xl text-4xl font-extraboldv  leading-tight sm:text-5xl xl:text-6xl">
       Tu aprendizaje,
-      <span className="block text-red">
+      <span className="block text-white/70">
         nuestra prioridad.
       </span>
     </h1>

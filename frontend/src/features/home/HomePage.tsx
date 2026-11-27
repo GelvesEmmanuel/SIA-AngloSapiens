@@ -86,6 +86,15 @@ export default function HomePage() {
               {profile.recommendation}
             </p>
           </div>
+           <div className="rounded-lg bg-slate-50 p-4">
+            <p className="text-sm font-semibold text-heading">
+              Advertencia
+            </p>
+
+            <p className="mt-1 text-sm leading-6 text-muted">
+              {profile.advertencia}
+            </p>
+          </div>
 
         </section>
       )}
