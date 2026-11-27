@@ -11,7 +11,7 @@ import MiPerfilPage from "../features/auth/pages/MiPerfilPage";
 import HomePage from "../features/home/HomePage";
 import UsersPage from "../features/users/pages/UsersPage";
 import { GestionDocentePage } from "../features/GestionDocentes/pages/GestionDocentepage";
-import { RegistrarDocentePage } from "../features/GestionDocentes/pages/RegistroDocentePage";
+import { RegistroDocentePage } from "../features/GestionDocentes/pages/RegistroDocentePage";
 import { DashboardLayout } from "./layouts/DashboardLayout";
 import DetalleDocentePage from "../features/GestionDocentes/pages/DetalleDocentePage";
 import { GestionEstudiantesPage } from "../features/GestionEstudiantes/pages/GestionEstudiante";
@@ -165,7 +165,7 @@ export function AppRouter() {
           </RequireAuth>
         }
       >
-        <Route index element={<RegistrarDocentePage />} />
+        <Route index element={<RegistroDocentePage />} />
       </Route>
       <Route
         path="/cursos"

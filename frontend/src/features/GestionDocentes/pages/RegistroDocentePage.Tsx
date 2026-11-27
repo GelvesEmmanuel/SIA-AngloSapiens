@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDocentes } from "../hooks/useDocents"; // Ajusta la ruta a tu hook
-export function RegistrarDocentePage() {
+export function RegistroDocentePage() {
   const navigate = useNavigate();
   const { ejecutarCrearDocente, isCreating, errorAccion } = useDocentes();
     // erorores del backend 
